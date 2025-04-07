@@ -14,7 +14,7 @@ currently being supported with security updates.
 
 We take security vulnerabilities seriously. If you discover a security issue, please report it to us privately. **Do not disclose the issue publicly** until we have had a chance to address it.
 
-Please report vulnerabilities via [INSERT PREFERRED PRIVATE CONTACT METHOD - e.g., email address, security reporting platform link].
+Please report vulnerabilities via email to jlietz93@gmail.com.
 
 We will acknowledge receipt of your vulnerability report promptly and strive to send you regular updates about our progress. We may ask for clarification or additional information.
 
