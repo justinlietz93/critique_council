@@ -6,15 +6,18 @@ within the critique council.
 """
 
 import os
+import logging # Import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional # Import Optional
 
 # Import reasoning tree logic
 from .reasoning_tree import execute_reasoning_tree
 
 # Define the base path for prompts relative to this file's location
-# *** ADJUSTED FOR INDEPENDENT MODULE ***
 PROMPT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'prompts')) # Assumes prompts is sibling to src
+
+# Get a logger for this module (used if no agent-specific logger is provided)
+module_logger = logging.getLogger(__name__)
 
 class ReasoningAgent(ABC):
     """
@@ -29,54 +32,68 @@ class ReasoningAgent(ABC):
             style_name: The name of the reasoning style (e.g., 'Logician').
         """
         self.style = style_name
-        # print(f"Initialized agent with style: {self.style}") # Temporary trace removed
+        self.logger = module_logger # Default logger
+
+    def set_logger(self, logger: logging.Logger):
+         """Allows setting a specific logger for this agent instance."""
+         self.logger = logger
+         self.logger.info(f"Agent logger initialized for {self.style}")
 
     @abstractmethod
     def get_style_directives(self) -> str:
         """Returns the specific directives defining the agent's reasoning style."""
         pass
 
-    async def critique(self, content: str, config: Dict[str, Any]) -> Dict[str, Any]: # Add config, make async
+    async def critique(self, content: str, config: Dict[str, Any], agent_logger: Optional[logging.Logger] = None) -> Dict[str, Any]: # Add logger param
         """
         Generates an initial critique of the content using the agent's style
         and the recursive reasoning tree logic.
 
         Args:
             content: The text content to be critiqued.
+            config: Application configuration.
+            agent_logger: Optional dedicated logger for this agent's run.
 
         Returns:
             A dictionary representing the initial critique tree.
             Example: {'agent_style': str, 'critique_tree': dict}
         """
-        # print(f"Agent '{self.style}' starting initial critique...") # Temporary trace removed
+        current_logger = agent_logger or self.logger # Use specific logger if provided
+        current_logger.info(f"Starting initial critique...")
         style_directives = self.get_style_directives()
+        if "ERROR:" in style_directives:
+             current_logger.error(f"Cannot perform critique due to prompt loading error: {style_directives}")
+             # Return an error structure consistent with orchestrator expectations
+             return {
+                 'agent_style': self.style,
+                 'critique_tree': {},
+                 'error': f"Failed to load style directives: {style_directives}"
+             }
 
-        # Call the async reasoning tree function
-        critique_tree_result = await execute_reasoning_tree( # Use await
+        # Call the async reasoning tree function, passing the logger
+        critique_tree_result = await execute_reasoning_tree(
             initial_content=content,
             style_directives=style_directives,
-            agent_style=self.style, # Pass style for context/logging in tree function
-            config=config # Pass config
+            agent_style=self.style,
+            config=config,
+            agent_logger=current_logger # Pass logger down
         )
-        # Handle case where tree generation terminates early (e.g., max depth)
+
         if critique_tree_result is None:
-             critique_tree_result = { # Default empty/terminated structure
-            'id': 'root-terminated',
-            'claim': f'Critique generation terminated early for {self.style}.',
-            'evidence': '',
-            'confidence': 0.0,
-            'severity': 'N/A',
-            'sub_critiques': []
-        }
+             current_logger.warning("Critique generation terminated early (e.g., max depth or low confidence).")
+             critique_tree_result = {
+                 'id': 'root-terminated',
+                 'claim': f'Critique generation terminated early for {self.style}.',
+                 'evidence': '', 'confidence': 0.0, 'severity': 'N/A', 'sub_critiques': []
+             }
 
-        # print(f"Agent '{self.style}' finished initial critique.") # Temporary trace removed
-
+        current_logger.info(f"Finished initial critique.")
         return {
             'agent_style': self.style,
             'critique_tree': critique_tree_result
         }
 
-    async def self_critique(self, own_critique: Dict[str, Any], other_critiques: List[Dict[str, Any]], config: Dict[str, Any]) -> Dict[str, Any]: # Add config, make async
+    async def self_critique(self, own_critique: Dict[str, Any], other_critiques: List[Dict[str, Any]], config: Dict[str, Any], agent_logger: Optional[logging.Logger] = None) -> Dict[str, Any]: # Add logger param
         """
         Performs self-critique based on the agent's own initial critique and
         the critiques provided by other council members.
@@ -84,23 +101,27 @@ class ReasoningAgent(ABC):
         Args:
             own_critique: The initial critique generated by this agent.
             other_critiques: A list of initial critiques from other agents.
+            config: Application configuration.
+            agent_logger: Optional dedicated logger for this agent's run.
 
         Returns:
             A dictionary containing adjustments or confirmations based on the self-critique.
             Example: {'agent_style': str, 'adjustments': list[dict]}
         """
-        # print(f"Agent '{self.style}' starting self-critique...") # Temporary trace removed
+        current_logger = agent_logger or self.logger
+        current_logger.info(f"Starting self-critique...")
         style_directives = self.get_style_directives()
         other_styles = [c.get('agent_style', 'Unknown') for c in other_critiques]
-        # print(f"Agent '{self.style}' considering critiques from: {other_styles}") # Temporary trace removed
+        current_logger.debug(f"Considering critiques from: {other_styles}")
 
         # Placeholder for actual self-critique logic.
-        # This might involve generating a new tree based on comparing critiques,
-        # or simply adjusting confidence/claims in the original tree.
+        # This should ideally involve LLM calls comparing critiques.
         # For now, returning simple placeholder adjustments.
         adjustments = []
         own_tree_id = own_critique.get('critique_tree', {}).get('id', 'N/A')
-        if own_tree_id != 'root-terminated': # Only add adjustment if initial critique wasn't terminated
+        if own_tree_id != 'root-terminated' and own_tree_id != 'N/A': # Check if initial critique was valid
+            # Log the placeholder action
+            current_logger.info(f"Applying placeholder self-critique adjustment to claim ID: {own_tree_id}")
             adjustments.append(
                 {
                     'target_claim_id': own_tree_id,
@@ -108,9 +129,11 @@ class ReasoningAgent(ABC):
                     'reasoning': f'Placeholder self-critique adjustment by {self.style}.'
                 }
             )
+        else:
+             current_logger.info("Skipping self-critique adjustment (invalid/terminated initial critique).")
 
-        # print(f"Agent '{self.style}' finished self-critique.") # Temporary trace removed
 
+        current_logger.info(f"Finished self-critique.")
         return {
             'agent_style': self.style,
             'adjustments': adjustments
@@ -123,37 +146,35 @@ class PhilosopherAgent(ReasoningAgent):
     def __init__(self, name: str, prompt_filename: str):
         super().__init__(name)
         self.prompt_filepath = os.path.join(PROMPT_DIR, prompt_filename)
-        self._directives_cache: str | None = None # Cache for directives
+        self._directives_cache: str | None = None
 
     def get_style_directives(self) -> str:
         """Loads and returns the directives from the agent's prompt file."""
+        current_logger = self.logger # Use the instance logger
         if self._directives_cache is None:
-            # Check if the adjusted path exists first
             if not os.path.exists(self.prompt_filepath):
-                 # Fallback: Try path relative to current file (if prompts is inside src)
                  alt_prompt_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'prompts'))
                  alt_filepath = os.path.join(alt_prompt_dir, os.path.basename(self.prompt_filepath))
                  if os.path.exists(alt_filepath):
                       self.prompt_filepath = alt_filepath
                  else:
-                      # print(f"Agent '{self.style}': ERROR - Prompt file not found at {self.prompt_filepath} or {alt_filepath}")
+                      error_msg = f"Prompt file not found at {self.prompt_filepath} or {alt_filepath}"
+                      current_logger.error(error_msg)
                       self._directives_cache = f"ERROR: Prompt file not found for {self.style}."
                       return self._directives_cache
-
             try:
                 with open(self.prompt_filepath, 'r', encoding='utf-8') as f:
                     self._directives_cache = f.read()
-                # print(f"Agent '{self.style}': Directives loaded from {self.prompt_filepath}") # Temporary trace removed
-            except FileNotFoundError: # Should be caught by exists check, but keep as safeguard
-                # print(f"Agent '{self.style}': ERROR - Prompt file not found at {self.prompt_filepath}") # Keep error logging if desired, or raise
-                self._directives_cache = f"ERROR: Prompt file not found for {self.style}."
+                current_logger.debug(f"Directives loaded from {self.prompt_filepath}")
             except Exception as e:
-                # print(f"Agent '{self.style}': ERROR - Failed to read prompt file {self.prompt_filepath}: {e}") # Keep error logging if desired, or raise
+                error_msg = f"Failed to read prompt file {self.prompt_filepath}: {e}"
+                current_logger.error(error_msg, exc_info=True)
                 self._directives_cache = f"ERROR: Failed to read prompt file for {self.style}."
-        # Ensure return type is string even on error
+
         return self._directives_cache if self._directives_cache is not None else ""
 
 # --- Specific Philosopher Agents ---
+# No changes needed below, they inherit the logger handling
 
 class AristotleAgent(PhilosopherAgent):
     """Critiques based on Aristotelian principles."""

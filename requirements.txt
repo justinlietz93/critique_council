@@ -1,0 +1,4 @@
+google-generativeai
+requests
+python-dotenv
+aiohttp

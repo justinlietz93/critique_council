@@ -6,61 +6,67 @@ Implements the recursive reasoning tree logic for critique generation.
 
 import logging
 from typing import Dict, List, Any, Optional
-import uuid # For generating unique node IDs
-import json # For potential parsing issues
+import uuid
+import json
 
 # Import the Gemini client function
-# Adjust relative path assuming providers is a sibling directory to critique_module components within src
 from .providers import gemini_client
 
-# Configure logger for this module
-logger = logging.getLogger(__name__)
+# Default configuration values (used if not found in passed config)
+DEFAULT_MAX_DEPTH = 3
+DEFAULT_CONFIDENCE_THRESHOLD = 0.3
 
-# Configuration for the reasoning tree
-MAX_DEPTH = 3
-CONFIDENCE_THRESHOLD = 0.3 # Minimum confidence to pursue a sub-critique
+# Get a logger for this module (used if no agent-specific logger is provided)
+module_logger = logging.getLogger(__name__)
 
-async def execute_reasoning_tree( # Make the function async
+async def execute_reasoning_tree(
     initial_content: str,
     style_directives: str,
-    agent_style: str, # Pass agent style for context
-    config: Dict[str, Any], # Pass config for API calls
+    agent_style: str,
+    config: Dict[str, Any],
+    agent_logger: Optional[logging.Logger] = None, # Add logger param
     depth: int = 0
-) -> Optional[Dict[str, Any]]: # Return type can be None
+) -> Optional[Dict[str, Any]]:
     """
     Recursively generates a critique tree based on prompts and content using Gemini.
-    NOTE: This is a placeholder implementation. It simulates the structure
-          but does not perform actual LLM calls or complex analysis.
 
     Args:
         initial_content: The content being analyzed at this level.
         style_directives: Instructions defining the agent's reasoning style.
         agent_style: The style name of the calling agent.
+        config: Application configuration.
+        agent_logger: Optional dedicated logger for this agent's run.
         depth: Current recursion depth.
 
     Returns:
         A dictionary representing the critique (sub)tree, or None if terminated early.
-        Example: {'id': str, 'claim': str, 'evidence': str, 'confidence': float,
-                  'severity': str, 'sub_critiques': list[dict]}
     """
-    # print(f"Tree ({agent_style}, Depth {depth}): Analyzing content segment.") # Removed trace
+    current_logger = agent_logger or module_logger # Use specific logger if provided
+    current_logger.info(f"Depth {depth}: Starting analysis...")
+
+    # --- Get settings from config ---
+    tree_config = config.get('reasoning_tree', {})
+    max_depth = tree_config.get('max_depth', DEFAULT_MAX_DEPTH)
+    confidence_threshold = tree_config.get('confidence_threshold', DEFAULT_CONFIDENCE_THRESHOLD)
+    # -----------------------------
 
     # 1. Base Case Check
-    if depth >= MAX_DEPTH:
-        # print(f"Tree ({agent_style}, Depth {depth}): Max depth reached. Terminating branch.") # Removed trace
+    if depth >= max_depth:
+        current_logger.info(f"Depth {depth}: Terminating branch (Reason: Max Depth Reached [{max_depth}])")
         return None
-    if len(initial_content) < 50: # Arbitrary minimum length for decomposition
-         # print(f"Tree ({agent_style}, Depth {depth}): Content too small. Terminating branch.") # Removed trace
+    if len(initial_content) < 50:
+         current_logger.info(f"Depth {depth}: Terminating branch (Reason: Content too small)")
          return None
 
     # --- Gemini Integration ---
-
     node_id = str(uuid.uuid4())
-    claim = f"Error generating claim for {agent_style} at depth {depth}."
+    claim = f"Error generating claim at depth {depth}."
     evidence = "N/A"
     confidence = 0.0
     severity = "N/A"
-    sub_topics_for_recursion = [] # List of strings/topics to recurse on
+    sub_topics_for_recursion = []
+    model_used_for_assessment = "N/A"
+    model_used_for_decomposition = "N/A"
 
     # 2. Generate Assessment using Gemini
     assessment_prompt_template = """
@@ -90,35 +96,42 @@ Return ONLY a JSON object with the keys "claim", "evidence", "confidence", "seve
         "content": initial_content
     }
     try:
-        logger.info(f"Tree ({agent_style}, Depth {depth}): Generating assessment...")
-        assessment_result = await gemini_client.call_gemini_with_retry(
+        # current_logger.debug(f"Depth {depth}: Generating assessment...") # Removed debug log
+        assessment_result, model_used_for_assessment = await gemini_client.call_gemini_with_retry(
             prompt_template=assessment_prompt_template,
             context=assessment_context,
             config=config,
             is_structured=True
         )
-        # Basic validation of returned structure
         if isinstance(assessment_result, dict) and all(k in assessment_result for k in ["claim", "confidence"]):
             claim = assessment_result.get("claim", claim)
             evidence = assessment_result.get("evidence", evidence)
             confidence = float(assessment_result.get("confidence", 0.0))
             severity = assessment_result.get("severity", severity)
-            logger.info(f"Tree ({agent_style}, Depth {depth}): Assessment generated (Conf: {confidence:.2f}). Claim: {claim[:80]}...")
+            # current_logger.debug(f"Depth {depth}: Assessment generated (Conf: {confidence:.2f}). Claim: {claim[:80]}...") # Removed debug log
         else:
-             logger.warning(f"Tree ({agent_style}, Depth {depth}): Unexpected assessment structure received: {assessment_result}")
-             # Keep default error values
+             # Log warning to agent log if structure is wrong
+             current_logger.warning(f"Depth {depth}: Unexpected assessment structure received from {model_used_for_assessment}: {assessment_result}")
+             pass
 
     except (gemini_client.ApiCallError, gemini_client.ApiResponseError, gemini_client.JsonParsingError, gemini_client.JsonProcessingError) as e:
-        logger.error(f"Tree ({agent_style}, Depth {depth}): Failed to generate assessment: {e}")
-        # Keep default error values, potentially terminate branch? For now, continue with low confidence.
+        # Log only the failure reason to agent log, root logger captures full error
+        current_logger.error(f"Depth {depth}: Failed to generate assessment: {e}")
         confidence = 0.0
     except Exception as e:
-        logger.error(f"Tree ({agent_style}, Depth {depth}): Unexpected error during assessment: {e}", exc_info=True)
-        confidence = 0.0 # Treat unexpected errors as low confidence
+        # Log only the failure reason to agent log
+        current_logger.error(f"Depth {depth}: Unexpected error during assessment: {e}")
+        confidence = 0.0
+
+    # Log the generated claim details including the model used
+    current_logger.info(f"Depth {depth}: [Model: {model_used_for_assessment}] Claim='{claim}', Confidence={confidence:.2f}, Severity='{severity}'")
+    if evidence != "N/A" and evidence:
+         current_logger.debug(f"Depth {depth}: Evidence='{evidence}'") # Keep evidence as debug
+
 
     # Terminate branch if confidence is too low
-    if confidence < CONFIDENCE_THRESHOLD:
-        logger.info(f"Tree ({agent_style}, Depth {depth}): Confidence ({confidence:.2f}) below threshold ({CONFIDENCE_THRESHOLD}). Terminating branch.")
+    if confidence < confidence_threshold:
+        current_logger.info(f"Depth {depth}: Terminating branch (Reason: Confidence {confidence:.2f} < Threshold {confidence_threshold})")
         return None
 
     # 3. Decomposition Identification using Gemini (only if confidence is sufficient)
@@ -142,54 +155,47 @@ Return ONLY a JSON list of strings, where each string is a concise description o
         "content": initial_content
     }
     try:
-        logger.info(f"Tree ({agent_style}, Depth {depth}): Identifying decomposition points...")
-        decomposition_result = await gemini_client.call_gemini_with_retry(
+        # current_logger.debug(f"Depth {depth}: Identifying decomposition points...") # Removed debug log
+        decomposition_result, model_used_for_decomposition = await gemini_client.call_gemini_with_retry(
             prompt_template=decomposition_prompt_template,
             context=decomposition_context,
             config=config,
-            is_structured=True # Expecting a JSON list
+            is_structured=True
         )
         if isinstance(decomposition_result, list) and all(isinstance(item, str) for item in decomposition_result):
             sub_topics_for_recursion = decomposition_result
-            logger.info(f"Tree ({agent_style}, Depth {depth}): Identified {len(sub_topics_for_recursion)} sub-topics for recursion.")
+            current_logger.info(f"Depth {depth}: [Model: {model_used_for_decomposition}] Identified {len(sub_topics_for_recursion)} sub-topics for recursion.")
         else:
-            logger.warning(f"Tree ({agent_style}, Depth {depth}): Unexpected decomposition structure received: {decomposition_result}")
+            current_logger.warning(f"Depth {depth}: Unexpected decomposition structure received from {model_used_for_decomposition}: {decomposition_result}")
+            pass
 
     except (gemini_client.ApiCallError, gemini_client.ApiResponseError, gemini_client.JsonParsingError, gemini_client.JsonProcessingError) as e:
-        logger.error(f"Tree ({agent_style}, Depth {depth}): Failed to identify decomposition points: {e}")
+        current_logger.error(f"Depth {depth}: Failed to identify decomposition points: {e}")
     except Exception as e:
-        logger.error(f"Tree ({agent_style}, Depth {depth}): Unexpected error during decomposition: {e}", exc_info=True)
+        current_logger.error(f"Depth {depth}: Unexpected error during decomposition: {e}")
 
 
     # 4. Recursive Calls
     sub_critiques = []
     if sub_topics_for_recursion:
-        # This part is tricky: we need the *content* corresponding to the sub-topics.
-        # The LLM currently only returns topic descriptions.
-        # Option 1: Ask LLM to also return the content segment for each topic (increases complexity).
-        # Option 2: Use placeholder logic to divide content based on the *number* of topics. (Using this for now)
-        # Option 3: Perform semantic search/matching based on topic descriptions (complex).
-
-        logger.warning(f"Tree ({agent_style}, Depth {depth}): Using placeholder content division for recursion based on {len(sub_topics_for_recursion)} identified topics.")
+        # current_logger.debug(f"Depth {depth}: Using placeholder content division for recursion based on {len(sub_topics_for_recursion)} identified topics.") # Removed debug log
         num_sub_points = len(sub_topics_for_recursion)
         segment_len = len(initial_content) // num_sub_points if num_sub_points > 0 else len(initial_content)
 
-        for i in range(num_sub_points):
-            # Using placeholder content division
+        for i, sub_topic in enumerate(sub_topics_for_recursion):
             sub_content = initial_content[i * segment_len : (i + 1) * segment_len]
-            logger.info(f"Tree ({agent_style}, Depth {depth}): Recursing on sub-topic {i+1} ('{sub_topics_for_recursion[i]}')...")
-            # *** Pass config down recursively ***
-            child_node = await execute_reasoning_tree( # Make recursive call async
+            current_logger.info(f"Depth {depth}: Recursing on sub-topic {i+1} ('{sub_topic}')...")
+            # Pass the same agent_logger down for the recursive call
+            child_node = await execute_reasoning_tree(
                 initial_content=sub_content,
                 style_directives=style_directives,
                 agent_style=agent_style,
-                config=config, # Pass config
+                config=config,
+                agent_logger=current_logger, # Pass logger down
                 depth=depth + 1
             )
-            # Await the recursive call since it's now async
-            awaited_child_node = await child_node
-            if awaited_child_node: # Only add if recursion didn't terminate early
-                sub_critiques.append(awaited_child_node)
+            if child_node:
+                sub_critiques.append(child_node)
 
     # 5. Node Construction
     current_node = {
@@ -199,14 +205,14 @@ Return ONLY a JSON list of strings, where each string is a concise description o
         'confidence': confidence,
         'severity': severity,
         'sub_critiques': sub_critiques
+        # Optionally add model_used_for_assessment here if needed downstream
     }
 
-    # 6. Refinement (Placeholder - not implemented)
-
-    # print(f"Tree ({agent_style}, Depth {depth}): Constructed node {node_id}.") # Removed trace
+    current_logger.info(f"Depth {depth}: Analysis complete for this level.")
     return current_node
 
 # --- Async Wrapper for Example Usage ---
+# (Example usage remains unchanged)
 async def run_example():
     dummy_content = "This is the main document content. " * 20 + \
                     "It contains several sections. Section one discusses apples. " * 10 + \
@@ -214,16 +220,21 @@ async def run_example():
                     "Finally, section three compares them. " * 5
     dummy_directives = "Be very critical."
     dummy_style = "Tester"
-    # Dummy config - replace with actual config loading if needed for real execution
     dummy_config = {
-        'api': {'retries': 1},
-        # Add other necessary config keys if gemini_client requires them
+        'api': {'gemini': {'retries': 1}}, # Adjusted dummy config structure
+        'reasoning_tree': {},
+        'council_orchestrator': {}
     }
 
     print("\n--- Running Reasoning Tree Example ---")
-    # Need to mock the gemini client for example to run without API key/config
-    with patch('src.critique_module.reasoning_tree.gemini_client.call_gemini_with_retry') as mock_gemini:
-        # Define side effect for mock gemini calls
+    try:
+        from unittest.mock import patch
+    except ImportError:
+        print("unittest.mock not found, skipping example patching.")
+        return
+
+    # Patch needs to target the updated function signature returning a tuple
+    with patch('src.providers.gemini_client.call_gemini_with_retry') as mock_gemini:
         call_count = 0
         def gemini_side_effect(*args, **kwargs):
             nonlocal call_count
@@ -231,20 +242,21 @@ async def run_example():
             prompt = kwargs.get('prompt_template', '')
             context = kwargs.get('context', {})
             agent = context.get('style_name', 'Unknown')
-            depth = kwargs.get('depth', 0) # Need depth info if passed
+            model_name = "Gemini: MockModel" # Mock model name
 
             if "Return ONLY a JSON object" in prompt: # Assessment call
-                return {
-                    "claim": f"Mock claim by {agent} at depth {depth}.",
+                result = {
+                    "claim": f"Mock claim by {agent} at call {call_count}.",
                     "evidence": "Mock evidence.",
                     "confidence": 0.7,
                     "severity": "Medium"
                 }
+                return result, model_name
             elif "Return ONLY a JSON list" in prompt: # Decomposition call
-                 # Only decompose once for the example
-                 return ["Sub-topic 1", "Sub-topic 2"] if call_count < 3 else []
-            else: # Fallback for unexpected prompts
-                return {}
+                 result = ["Sub-topic 1", "Sub-topic 2"] if call_count < 4 else []
+                 return result, model_name
+            else:
+                return {}, model_name
 
         mock_gemini.side_effect = gemini_side_effect
 
@@ -253,13 +265,11 @@ async def run_example():
         )
         print("\n--- Reasoning Tree Result ---")
         import json
-    print(json.dumps(critique_result, indent=2))
-    print("--- End Reasoning Tree Example ---")
+        print(json.dumps(critique_result, indent=2))
+        print("--- End Reasoning Tree Example ---")
 
 
-# Example usage needs to be run within an async context if called directly
 if __name__ == '__main__':
     import asyncio
-    # Configure basic logging for example output
     logging.basicConfig(level=logging.INFO)
     asyncio.run(run_example())

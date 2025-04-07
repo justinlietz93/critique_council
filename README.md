@@ -21,7 +21,8 @@ This Python module provides a framework for critiquing text documents using a si
 *   **`prompts/`**: Contains enhanced (V2.0) text files defining the detailed philosophical directives for each agent.
 *   **`tests/`**: Contains unit, integration, and end-to-end tests using `pytest`.
 *   **`docs/`**: Contains requirements, design, and test log documentation.
-*   **`.env`**: (Optional/Recommended) File to store API keys (see Configuration).
+*   **`config.json`**: Central configuration file for model parameters, thresholds, etc.
+*   **`.env`**: (Recommended) File to store sensitive API keys (see Configuration).
 *   **`.gitignore`**: Standard Python gitignore file.
 *   **`.editorconfig`**: Defines basic editor settings.
 *   **`README.md`**: This file.
@@ -29,9 +30,16 @@ This Python module provides a framework for critiquing text documents using a si
 
 ## Configuration
 
-The module relies on external LLM APIs (Google Gemini and optionally DeepSeek) and requires configuration, typically via a dictionary passed to `critique_goal_document`. The `gemini_client` expects API keys and potentially other settings (retries, model name, temperature, etc.).
+The module uses a combination of `config.json` for general settings and `.env` for sensitive API keys. The `run_critique.py` script loads both and passes a combined configuration dictionary to the core module.
 
-**Recommended Method:** Use a `.env` file in the project root to store sensitive API keys:
+**1. `config.json`:**
+   - Located in the project root.
+   - Defines parameters like LLM model names, API retries, temperature, reasoning tree depth, confidence thresholds, etc.
+   - You can modify these values to tune the critique process.
+
+**2. `.env` File (for API Keys):**
+   - Create this file in the project root (it's ignored by git).
+   - Store sensitive API keys here:
 
 ```dotenv
 # .env file

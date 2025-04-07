@@ -3,6 +3,7 @@
 """
 Main entry point for the Reasoning Council Critique Module.
 """
+from typing import Dict, Any # Import Dict and Any for type hints
 
 # Component Imports
 from .input_reader import read_file_content
