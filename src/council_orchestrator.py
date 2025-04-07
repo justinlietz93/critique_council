@@ -9,7 +9,8 @@ import logging
 import sys
 import os
 import json
-from typing import Dict, List, Any, Type, Optional # Import Optional
+from typing import Dict, List, Any, Type, Optional
+
 # Import agent implementations
 from .reasoning_agent import (
     ReasoningAgent, AristotleAgent, DescartesAgent, KantAgent,
@@ -44,8 +45,7 @@ def setup_agent_logger(agent_name: str) -> logging.Logger:
 # --- Helper function to apply adjustments recursively ---
 def apply_adjustments_to_tree(node: Optional[Dict[str, Any]], adjustment_map: Dict[str, Dict[str, Any]], logger: logging.Logger):
     """Recursively applies arbitration adjustments to a critique tree node."""
-    if not node or not isinstance(node, dict):
-        return
+    if not node or not isinstance(node, dict): return
 
     node_id = node.get('id')
     if node_id and node_id in adjustment_map:
@@ -53,12 +53,12 @@ def apply_adjustments_to_tree(node: Optional[Dict[str, Any]], adjustment_map: Di
         original_confidence = node.get('confidence', 0.0)
         delta = adjustment.get('confidence_delta', 0.0)
         adjusted_confidence = original_confidence + delta
-        adjusted_confidence = max(0.0, min(1.0, adjusted_confidence)) # Clamp
-        node['confidence'] = adjusted_confidence # Update confidence in the tree
-        node['arbitration'] = adjustment.get('arbitration_comment') # Add comment
-        logger.info(f"Applied arbitration to claim '{node_id}': Delta={delta:.2f}, NewConf={adjusted_confidence:.2f}. Comment: {node['arbitration']}")
+        adjusted_confidence = max(0.0, min(1.0, adjusted_confidence))
+        node['confidence'] = adjusted_confidence
+        node['arbitration'] = adjustment.get('arbitration_comment')
+        # Log application within the helper for clarity
+        logger.debug(f"Applied arbitration to claim '{node_id}': Delta={delta:+.2f}, NewConf={adjusted_confidence:.2f}.")
 
-    # Recurse on sub-critiques
     if 'sub_critiques' in node and isinstance(node['sub_critiques'], list):
         for sub_node in node['sub_critiques']:
             apply_adjustments_to_tree(sub_node, adjustment_map, logger)
@@ -69,7 +69,7 @@ def apply_adjustments_to_tree(node: Optional[Dict[str, Any]], adjustment_map: Di
 def run_critique_council(content: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Orchestrates the critique process: philosophers critique, then expert arbitrates.
-    Returns full adjusted trees and arbitration details.
+    Returns full adjusted trees and arbitration details including score.
     """
     root_logger = logging.getLogger(__name__)
 
@@ -84,8 +84,7 @@ def run_critique_council(content: str, config: Dict[str, Any]) -> Dict[str, Any]
         agent = agent_cls()
         agent_logger = setup_agent_logger(agent.style)
         agent_loggers[agent.style] = agent_logger
-        if hasattr(agent, 'set_logger'):
-             agent.set_logger(agent_logger)
+        if hasattr(agent, 'set_logger'): agent.set_logger(agent_logger)
         philosopher_agents.append(agent)
     total_philosophers = len(philosopher_agents)
 
@@ -114,125 +113,110 @@ def run_critique_council(content: str, config: Dict[str, Any]) -> Dict[str, Any]
     print(f"Starting Arbitration Round...")
     arbiter_agent = ExpertArbiterAgent()
     arbiter_logger = setup_agent_logger(arbiter_agent.style)
-    if hasattr(arbiter_agent, 'set_logger'):
-        arbiter_agent.set_logger(arbiter_logger)
+    if hasattr(arbiter_agent, 'set_logger'): arbiter_agent.set_logger(arbiter_logger)
 
-    arbitration_adjustments = []
+    # Initialize arbiter result structure
+    arbitration_result_data = {'adjustments': [], 'arbiter_overall_score': None, 'arbiter_score_justification': None, 'error': None}
     status = "OK"
     try:
         valid_critiques_for_arbiter = [c for c in initial_critiques if 'error' not in c]
         if valid_critiques_for_arbiter:
+             # Capture the full result dictionary from arbitrate
              arbitration_result = arbiter_agent.arbitrate(content, valid_critiques_for_arbiter, config, arbiter_logger)
-             if 'error' in arbitration_result and arbitration_result['error']: # Check if error is not None or empty
-                  status = f"ERROR ({arbitration_result['error']})"
-                  root_logger.error(f"Arbitration failed: {arbitration_result['error']}")
-             else:
-                  arbitration_adjustments = arbitration_result.get('adjustments', [])
+             # Update the result data structure
+             arbitration_result_data['adjustments'] = arbitration_result.get('adjustments', [])
+             arbitration_result_data['arbiter_overall_score'] = arbitration_result.get('arbiter_overall_score')
+             arbitration_result_data['arbiter_score_justification'] = arbitration_result.get('arbiter_score_justification')
+             arbitration_result_data['error'] = arbitration_result.get('error') # Capture potential error string
+
+             if arbitration_result_data['error']:
+                  status = f"ERROR ({arbitration_result_data['error']})"
+                  root_logger.error(f"Arbitration failed: {arbitration_result_data['error']}")
         else:
              status = "SKIPPED (No valid initial critiques)"
              print("  Skipping arbitration (no valid initial critiques).")
 
     except Exception as e:
-        root_logger.error(f"Error during arbitration by agent '{arbiter_agent.style}': {e}", exc_info=True)
-        arbiter_logger.error(f"Arbitration failed: {e}", exc_info=True)
+        root_logger.error(f"Error during arbitration call for agent '{arbiter_agent.style}': {e}", exc_info=True)
+        arbiter_logger.error(f"Arbitration call failed: {e}", exc_info=True)
         status = f"ERROR ({type(e).__name__})"
-        arbitration_adjustments = [] # Ensure adjustments list is empty on error
+        arbitration_result_data['error'] = str(e) # Store exception string
 
-    print(f"Arbitration Round Completed ({status}). Found {len(arbitration_adjustments)} adjustments.")
+    print(f"Arbitration Round Completed ({status}). Found {len(arbitration_result_data['adjustments'])} adjustments. Arbiter Score: {arbitration_result_data['arbiter_overall_score']}")
 
 
     # 4. Apply Arbitration Adjustments to Trees
     print("Applying arbitration adjustments to critique trees...")
     adjustment_map: Dict[str, Dict[str, Any]] = {
-        adj.get('target_claim_id'): adj for adj in arbitration_adjustments if adj.get('target_claim_id')
+        adj.get('target_claim_id'): adj for adj in arbitration_result_data['adjustments'] if adj.get('target_claim_id')
     }
     adjusted_critique_trees = []
     for critique in initial_critiques:
-         # Deep copy might be safer here if trees are very complex, but try direct modification first
+         # Apply adjustments recursively
          if 'critique_tree' in critique and isinstance(critique['critique_tree'], dict):
               apply_adjustments_to_tree(critique['critique_tree'], adjustment_map, root_logger)
-         adjusted_critique_trees.append(critique) # Add the potentially modified critique object
+         adjusted_critique_trees.append(critique)
 
 
-    # 5. Synthesize Final Data (Score based on adjusted trees)
+    # 5. Synthesize Final Data (Calculate severity counts based on adjusted trees)
     print("Synthesizing final results...")
-    final_points_for_scoring = [] # Separate list for scoring based on threshold
+    final_points_for_scoring = []
     orchestrator_config = config.get('council_orchestrator', {})
     synthesis_confidence_threshold = orchestrator_config.get('synthesis_confidence_threshold', 0.4)
 
-    # Function to recursively extract points meeting threshold from adjusted tree
     def extract_significant_points(node: Optional[Dict[str, Any]], agent_style: str):
+        # (Helper function remains the same as before)
         points = []
-        if not node or not isinstance(node, dict):
-            return points
-        
-        confidence = node.get('confidence', 0.0) # Use adjusted confidence
+        if not node or not isinstance(node, dict): return points
+        confidence = node.get('confidence', 0.0)
         claim_text = node.get('claim', 'N/A')
-        
-        # Check threshold
         if confidence >= synthesis_confidence_threshold:
              point_data = {
-                 'area': f"Philosopher: {agent_style}",
-                 'critique': claim_text,
-                 'severity': node.get('severity', 'N/A'),
-                 'confidence': round(confidence, 2)
+                 'area': f"Philosopher: {agent_style}", 'critique': claim_text,
+                 'severity': node.get('severity', 'N/A'), 'confidence': round(confidence, 2)
              }
-             if node.get('arbitration'):
-                  point_data['arbitration'] = node['arbitration']
+             if node.get('arbitration'): point_data['arbitration'] = node['arbitration']
              points.append(point_data)
-
-        # Recurse on sub-critiques regardless of parent threshold (to find nested significant points)
         if 'sub_critiques' in node and isinstance(node['sub_critiques'], list):
             for sub_node in node['sub_critiques']:
                 points.extend(extract_significant_points(sub_node, agent_style))
         return points
 
-    # Extract significant points from all adjusted trees for scoring
     processed_claims_for_scoring = set()
     for adjusted_critique in adjusted_critique_trees:
          if 'error' not in adjusted_critique and 'critique_tree' in adjusted_critique:
               agent_style = adjusted_critique.get('agent_style', 'Unknown')
               extracted_points = extract_significant_points(adjusted_critique['critique_tree'], agent_style)
               for point in extracted_points:
-                   # Avoid duplicate claims in scoring list
                    if point['critique'] not in processed_claims_for_scoring:
                         final_points_for_scoring.append(point)
                         processed_claims_for_scoring.add(point['critique'])
 
-
-    # Calculate score based on extracted significant points
-    placeholder_score = 100
+    # Calculate severity counts based on the points meeting the threshold AFTER arbitration
     high_severity_count = 0
     medium_severity_count = 0
     low_severity_count = 0
-
     if final_points_for_scoring:
         no_findings = False
-        final_assessment = f"Council synthesis complete. Identified {len(final_points_for_scoring)} significant point(s) across all critique levels after expert arbitration."
+        final_assessment_summary = f"Council synthesis complete. Identified {len(final_points_for_scoring)} significant point(s) across all critique levels after expert arbitration."
         for point in final_points_for_scoring:
              severity = point.get('severity', 'N/A').lower()
-             if severity == 'critical' or severity == 'high':
-                 placeholder_score -= 15
-                 high_severity_count += 1
-             elif severity == 'medium':
-                 placeholder_score -= 5
-                 medium_severity_count += 1
-             elif severity == 'low':
-                 placeholder_score -= 2
-                 low_severity_count += 1
-        placeholder_score = max(0, placeholder_score)
+             if severity == 'critical' or severity == 'high': high_severity_count += 1
+             elif severity == 'medium': medium_severity_count += 1
+             elif severity == 'low': low_severity_count += 1
     else:
         no_findings = True
-        final_assessment = "Council synthesis complete. No points met the significance threshold for reporting after expert arbitration."
+        final_assessment_summary = "Council synthesis complete. No points met the significance threshold for reporting after expert arbitration."
 
     # Return the full data needed by the new formatter
     synthesized_data = {
-        'final_assessment_summary': final_assessment, # Summary text for top section
-        'adjusted_critique_trees': adjusted_critique_trees, # Full trees with adjustments
-        'arbitration_adjustments': arbitration_adjustments, # Raw adjustments list
-        'no_findings': no_findings, # Still useful for formatter logic
-        'score_metrics': {
-            'overall_score': placeholder_score,
+        'final_assessment_summary': final_assessment_summary,
+        'adjusted_critique_trees': adjusted_critique_trees,
+        'arbitration_adjustments': arbitration_result_data['adjustments'], # Pass raw adjustments
+        'arbiter_overall_score': arbitration_result_data['arbiter_overall_score'], # Pass arbiter score
+        'arbiter_score_justification': arbitration_result_data['arbiter_score_justification'], # Pass justification
+        'no_findings': no_findings,
+        'score_metrics': { # Only severity counts needed now
             'high_severity_points': high_severity_count,
             'medium_severity_points': medium_severity_count,
             'low_severity_points': low_severity_count,

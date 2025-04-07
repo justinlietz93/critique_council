@@ -22,7 +22,11 @@ def format_critique_node(node: Optional[Dict[str, Any]], depth: int = 0) -> List
     lines = []
     if not node or not isinstance(node, dict): return lines
 
+    # Indentation based on depth (using 2 spaces per level for Markdown lists)
     indent = "  " * depth
+    # Use '*' for the first level, '-' for subsequent levels for better list rendering
+    list_marker = "*" if depth == 0 else "-"
+
     claim = node.get('claim', 'N/A')
     severity = node.get('severity', 'N/A')
     confidence = node.get('confidence', 0.0)
@@ -30,7 +34,8 @@ def format_critique_node(node: Optional[Dict[str, Any]], depth: int = 0) -> List
     arbitration = node.get('arbitration')
     sub_critiques = node.get('sub_critiques', [])
 
-    lines.append(f"{indent}- **Claim:** {claim}")
+    # Format current node as a list item
+    lines.append(f"{indent}{list_marker} **Claim:** {claim}")
     lines.append(f"{indent}  - **Severity:** {severity}")
     lines.append(f"{indent}  - **Confidence (Adjusted):** {confidence:.0%}")
     if evidence:
@@ -40,10 +45,13 @@ def format_critique_node(node: Optional[Dict[str, Any]], depth: int = 0) -> List
     if arbitration:
         lines.append(f"{indent}  - **Expert Arbitration:** {arbitration}")
 
+    # Recursively format children, increasing depth
     if sub_critiques:
-        lines.append(f"{indent}  - **Sub-Critiques:**")
+        # Add a sub-list marker if needed (adjust indentation for nested list)
+        # lines.append(f"{indent}  - **Sub-Critiques:**") # Optional header for sub-critiques
         for sub_node in sub_critiques:
-            lines.extend(format_critique_node(sub_node, depth + 1))
+            lines.extend(format_critique_node(sub_node, depth + 1)) # Increase depth
+
     return lines
 # ---------------------------------------------------------
 
@@ -63,15 +71,14 @@ def generate_judge_summary_and_score(original_content: str, adjusted_trees: List
         context = {
             "original_content": original_content,
             "adjusted_critique_trees_json": json.dumps(adjusted_trees, indent=2),
-            "arbitration_data_json": json.dumps(arbiter_data, indent=2) # Pass full arbiter data
+            "arbitration_data_json": json.dumps(arbiter_data, indent=2)
         }
 
-        # Expecting JSON: {"judge_summary_text": "...", "judge_overall_score": N, "judge_score_justification": "..."}
         judge_result, model_used = gemini_client.call_gemini_with_retry(
             prompt_template=judge_prompt_template,
             context=context,
             config=config,
-            is_structured=True # Expecting JSON now
+            is_structured=True
         )
 
         if isinstance(judge_result, dict) and all(k in judge_result for k in ['judge_summary_text', 'judge_overall_score', 'judge_score_justification']):
@@ -109,12 +116,12 @@ def format_critique_output(critique_data: Dict[str, Any], original_content: str,
 
     # --- Get Data ---
     adjusted_trees = critique_data.get('adjusted_critique_trees', [])
-    arbiter_data = { # Pass arbiter data needed for Judge prompt
+    arbiter_data = {
         'adjustments': critique_data.get('arbitration_adjustments', []),
         'arbiter_overall_score': critique_data.get('arbiter_overall_score'),
         'arbiter_score_justification': critique_data.get('arbiter_score_justification')
     }
-    score_metrics = critique_data.get('score_metrics', {}) # Severity counts
+    score_metrics = critique_data.get('score_metrics', {})
 
     # --- Generate Judge Summary and Score ---
     judge_summary, judge_score, judge_justification = generate_judge_summary_and_score(
@@ -163,6 +170,7 @@ def format_critique_output(critique_data: Dict[str, Any], original_content: str,
     output_lines.append("")
     output_lines.append("---")
 
+
     # --- Detailed Agent Critiques ---
     output_lines.append("## Detailed Agent Critiques")
     if not adjusted_trees:
@@ -170,22 +178,23 @@ def format_critique_output(critique_data: Dict[str, Any], original_content: str,
     else:
         for agent_critique in adjusted_trees:
             agent_style = agent_critique.get('agent_style', 'Unknown Agent')
-            # Skip arbiter pseudo-agent if it ended up in the list
-            if agent_style == 'ExpertArbiter': continue
+            if agent_style == 'ExpertArbiter': continue # Skip arbiter pseudo-agent
+
             output_lines.append(f"### Agent: {agent_style}")
-            if 'error' in agent_critique:
+            if 'error' in agent_critique and agent_critique['error']:
                 output_lines.append(f"- **Error during critique:** {agent_critique['error']}")
             elif 'critique_tree' in agent_critique and agent_critique['critique_tree']:
-                # Format the full tree recursively
+                # Format the full tree recursively starting at depth 0
                 tree_lines = format_critique_node(agent_critique['critique_tree'], depth=0)
-                if not tree_lines: # Handle case where root node itself was invalid/terminated
+                if not tree_lines:
                      output_lines.append("- Critique terminated early or no valid points generated.")
                 else:
-                     output_lines.extend(tree_lines)
+                     output_lines.extend(tree_lines) # Add formatted tree lines
             else:
                 output_lines.append("- No valid critique tree generated.")
             output_lines.append("")
             output_lines.append("---")
+
 
     output_lines.append("\n--- End of Report ---")
     return "\n".join(output_lines)
