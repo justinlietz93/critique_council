@@ -1,11 +1,11 @@
 # run_critique.py
-import asyncio
+# import asyncio # No longer needed
 import os
 import logging
 import json
-import datetime # Import datetime
+import datetime
 from dotenv import load_dotenv
-from src import critique_goal_document
+from src import critique_goal_document # Now synchronous
 
 # Function to load configuration from JSON file
 def load_config(path="config.json"):
@@ -21,9 +21,8 @@ def load_config(path="config.json"):
 
 # --- Configure Logging ---
 def setup_logging():
-    """Configures root logger to write to system.log and agent loggers."""
     log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True) # Ensure logs dir exists
+    os.makedirs(log_dir, exist_ok=True)
     system_log_file = os.path.join(log_dir, "system.log")
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
@@ -33,7 +32,8 @@ def setup_logging():
     logging.info("Root logging configured. System logs in logs/system.log")
 # -------------------------
 
-async def main():
+# Make main synchronous
+def main():
     setup_logging()
     root_logger = logging.getLogger(__name__)
 
@@ -71,21 +71,19 @@ async def main():
         return
     # -------------------------
 
-    input_file = 'content.txt' # Default input file
+    input_file = 'content.txt'
 
     root_logger.info(f"Initiating critique for: {input_file}")
     try:
-        final_critique_report = await critique_goal_document(input_file, module_config)
+        # Call synchronous function
+        final_critique_report = critique_goal_document(input_file, module_config) # No await
 
-        # --- Generate Output Filename ---
         output_dir = "critiques"
-        os.makedirs(output_dir, exist_ok=True) # Ensure critiques dir exists
+        os.makedirs(output_dir, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         input_basename = os.path.splitext(os.path.basename(input_file))[0]
         output_filename = os.path.join(output_dir, f"{input_basename}_critique_{timestamp}.md")
-        # --------------------------------
 
-        # Save the report to the generated filename
         with open(output_filename, 'w', encoding='utf-8') as f:
             f.write(final_critique_report)
 
@@ -103,4 +101,4 @@ async def main():
         root_logger.error(error_msg, exc_info=True)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main() # Call main directly

@@ -1,27 +1,103 @@
 # src/critique_module/output_formatter.py
 
 """
-Component responsible for formatting the final critique output into Markdown.
+Component responsible for formatting the final critique output into Markdown,
+including summaries and detailed agent trees.
 """
 
-from typing import Dict, List, Any
+import logging
 import datetime
+import json
+import os # <<<< ADDED IMPORT
+from typing import Dict, List, Any, Optional
 
-def format_critique_output(critique_data: Dict[str, Any]) -> str:
+# Import LLM client for Judge summary
+from .providers import gemini_client # Assuming sync version
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
+
+# --- Helper function to format critique tree recursively ---
+def format_critique_node(node: Optional[Dict[str, Any]], depth: int = 0) -> List[str]:
+    """Recursively formats a critique node and its children into Markdown lines."""
+    lines = []
+    if not node or not isinstance(node, dict):
+        return lines
+
+    indent = "  " * depth
+    claim = node.get('claim', 'N/A')
+    severity = node.get('severity', 'N/A')
+    confidence = node.get('confidence', 0.0) # Use adjusted confidence
+    evidence = node.get('evidence')
+    arbitration = node.get('arbitration') # Get arbiter comment
+    sub_critiques = node.get('sub_critiques', [])
+
+    # Format current node
+    lines.append(f"{indent}- **Claim:** {claim}")
+    lines.append(f"{indent}  - **Severity:** {severity}")
+    lines.append(f"{indent}  - **Confidence (Adjusted):** {confidence:.0%}")
+    if evidence:
+        evidence_lines = evidence.strip().split('\n')
+        lines.append(f"{indent}  - **Evidence:**")
+        for line in evidence_lines:
+            lines.append(f"{indent}    > {line}")
+    if arbitration:
+        lines.append(f"{indent}  - **Expert Arbitration:** {arbitration}")
+
+    # Recursively format children
+    if sub_critiques:
+        lines.append(f"{indent}  - **Sub-Critiques:**")
+        for sub_node in sub_critiques:
+            lines.extend(format_critique_node(sub_node, depth + 1))
+
+    return lines
+# ---------------------------------------------------------
+
+# --- Helper function to generate Judge summary ---
+def generate_judge_summary(original_content: str, adjusted_trees: List[Dict[str, Any]], arbiter_adjustments: List[Dict[str, Any]], config: Dict[str, Any]) -> str:
+    """Calls LLM with Judge prompt to generate overall summary."""
+    judge_logger = logging.getLogger('JudgeSummary') # Use a specific logger name
+    judge_logger.info("Attempting to generate Judge Summary...")
+    try:
+        # Load Judge prompt
+        # Construct path relative to this file's directory
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        prompt_path = os.path.join(base_dir, '..', 'prompts', 'judge_summary.txt')
+        judge_logger.debug(f"Loading Judge prompt from: {prompt_path}")
+        with open(prompt_path, 'r', encoding='utf-8') as f:
+            judge_prompt_template = f.read()
+
+        # Prepare context
+        context = {
+            "original_content": original_content,
+            "adjusted_critique_trees_json": json.dumps(adjusted_trees, indent=2),
+            "arbitration_adjustments_json": json.dumps(arbiter_adjustments, indent=2)
+        }
+
+        # Call LLM (synchronously)
+        summary_text, model_used = gemini_client.call_gemini_with_retry(
+            prompt_template=judge_prompt_template,
+            context=context,
+            config=config,
+            is_structured=False # Expecting Markdown text block
+        )
+        judge_logger.info(f"Judge Summary generated successfully using {model_used}.")
+        return summary_text.strip()
+
+    except FileNotFoundError:
+        error_msg = f"Judge summary prompt file not found at {prompt_path}"
+        judge_logger.error(error_msg)
+        return f"Error: {error_msg}"
+    except Exception as e:
+        error_msg = f"Failed to generate Judge summary: {e}"
+        judge_logger.error(error_msg, exc_info=True) # Log full traceback for unexpected errors
+        return f"Error generating Judge summary: {e}"
+# --------------------------------------------------
+
+
+def format_critique_output(critique_data: Dict[str, Any], original_content: str, config: Dict[str, Any]) -> str:
     """
-    Formats the synthesized critique data into a final Markdown report string.
-
-    Args:
-        critique_data: Dictionary from the council orchestrator.
-                       Expected keys: 'final_assessment' (str),
-                                      'points' (list[dict]),
-                                      'no_findings' (bool),
-                                      'score_metrics' (dict).
-                       Each dict in 'points' should have 'area', 'critique', 'severity', 'confidence'.
-                       'score_metrics' should have 'overall_score', 'high_severity_points', etc.
-
-    Returns:
-        A formatted Markdown string.
+    Formats the synthesized critique data into a detailed Markdown report string.
     """
     output_lines = []
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -29,6 +105,19 @@ def format_critique_output(critique_data: Dict[str, Any]) -> str:
     output_lines.append(f"# Critique Assessment Report")
     output_lines.append(f"**Generated:** {now}")
     output_lines.append("---")
+
+    # --- Judge Summary ---
+    output_lines.append("## Overall Judge Summary")
+    judge_summary = generate_judge_summary(
+        original_content,
+        critique_data.get('adjusted_critique_trees', []),
+        critique_data.get('arbitration_adjustments', []),
+        config
+    )
+    output_lines.append(judge_summary)
+    output_lines.append("")
+    output_lines.append("---")
+
 
     # --- Scoring Summary ---
     metrics = critique_data.get('score_metrics', {})
@@ -42,70 +131,51 @@ def format_critique_output(critique_data: Dict[str, Any]) -> str:
     output_lines.append(f"- **High/Critical Severity Points:** {high_sev}")
     output_lines.append(f"- **Medium Severity Points:** {med_sev}")
     output_lines.append(f"- **Low Severity Points:** {low_sev}")
-    output_lines.append("") # Add spacing
+    output_lines.append("")
+    output_lines.append("---")
 
-    # --- Overall Assessment ---
-    output_lines.append("## Assessment Summary")
-    assessment = critique_data.get('final_assessment', 'Assessment data unavailable.')
-    output_lines.append(f"{assessment}")
-    output_lines.append("") # Add spacing
-
-    # --- Detailed Points ---
-    output_lines.append("## Detailed Critique Points")
-    if critique_data.get('no_findings', True):
-        output_lines.append("No significant points for improvement identified meeting the reporting threshold.")
+    # --- Arbiter Summary ---
+    output_lines.append("## Expert Arbiter Summary")
+    arbiter_adjustments = critique_data.get('arbitration_adjustments', [])
+    if arbiter_adjustments:
+        output_lines.append(f"The Expert Arbiter reviewed the philosophical critiques and provided {len(arbiter_adjustments)} specific comments/adjustments:")
+        for i, adj in enumerate(arbiter_adjustments):
+            target_id = adj.get('target_claim_id', 'N/A')
+            comment = adj.get('arbitration_comment', 'N/A')
+            delta = adj.get('confidence_delta', 0.0)
+            output_lines.append(f"{i+1}. **Target Claim ID:** `{target_id}`")
+            output_lines.append(f"   - **Comment:** {comment}")
+            output_lines.append(f"   - **Confidence Delta:** {delta:+.2f}")
     else:
-        points: List[Dict[str, Any]] = critique_data.get('points', [])
-        if points:
-            for i, point in enumerate(points):
-                area = point.get('area', 'N/A')
-                critique = point.get('critique', 'N/A')
-                severity = point.get('severity', 'N/A')
-                confidence_str = f"{point['confidence']:.0%}" if 'confidence' in point else "N/A" # Format as percentage
+        output_lines.append("The Expert Arbiter provided no specific adjustments.")
+    output_lines.append("")
+    output_lines.append("---")
 
-                output_lines.append(f"### Point {i+1}")
-                output_lines.append(f"- **Area:** {area}")
-                output_lines.append(f"- **Severity:** {severity}")
-                output_lines.append(f"- **Confidence:** {confidence_str}")
-                output_lines.append(f"- **Critique:** {critique}")
-                output_lines.append("") # Add spacing between points
-        else:
-            # This case should ideally be covered by 'no_findings', but added for robustness
-            output_lines.append("No specific points were detailed despite findings being indicated.")
+
+    # --- Detailed Agent Critiques ---
+    output_lines.append("## Detailed Agent Critiques")
+    adjusted_trees = critique_data.get('adjusted_critique_trees', [])
+    if not adjusted_trees:
+         output_lines.append("No critique data available.")
+    else:
+        for agent_critique in adjusted_trees:
+            agent_style = agent_critique.get('agent_style', 'Unknown Agent')
+            output_lines.append(f"### Agent: {agent_style}")
+            if 'error' in agent_critique:
+                output_lines.append(f"- **Error during critique:** {agent_critique['error']}")
+            elif 'critique_tree' in agent_critique and agent_critique['critique_tree']:
+                tree_lines = format_critique_node(agent_critique['critique_tree'], depth=0)
+                output_lines.extend(tree_lines)
+            else:
+                output_lines.append("- No valid critique tree generated.")
+            output_lines.append("")
+            output_lines.append("---")
+
 
     output_lines.append("\n--- End of Report ---")
     return "\n".join(output_lines)
 
-# Example usage (for testing) - Updated for new structure
+# Example usage - Needs update if run directly
 if __name__ == '__main__':
-    test_data_findings = {
-        'final_assessment': 'The document exhibits structural deficiencies and lacks clarity in critical sections.',
-        'points': [
-            {'area': 'Section 2.1', 'critique': 'Logical flow is inconsistent, assumptions are not clearly stated.', 'severity': 'High', 'confidence': 0.85},
-            {'area': 'Definitions', 'critique': 'Term \'Synergy\' used ambiguously without precise definition.', 'severity': 'Medium', 'confidence': 0.75},
-            {'area': 'Requirements (CRIT-SIM-01)', 'critique': 'Reference to \'amd_hip\' backend lacks context for alternative implementations.', 'severity': 'Low', 'confidence': 0.55}
-        ],
-        'no_findings': False,
-        'score_metrics': { # Example metrics
-            'overall_score': 78,
-            'high_severity_points': 1,
-            'medium_severity_points': 1,
-            'low_severity_points': 1,
-        }
-    }
-    test_data_no_findings = {
-        'final_assessment': 'Council analysis concluded. No points met the significance threshold for reporting after deliberation.',
-        'points': [],
-        'no_findings': True,
-         'score_metrics': {
-            'overall_score': 100,
-            'high_severity_points': 0,
-            'medium_severity_points': 0,
-            'low_severity_points': 0,
-        }
-    }
-
-    print("--- Formatting Test: With Findings (Markdown) ---")
-    print(format_critique_output(test_data_findings))
-    print("\n--- Formatting Test: No Findings (Markdown) ---")
-    print(format_critique_output(test_data_no_findings))
+    print("NOTE: Direct execution of output_formatter.py example is limited.")
+    pass

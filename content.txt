@@ -1,7 +1,7 @@
 # Meta-Structure Definition for Autonomous LLM Execution Prompts v1.1.0
 
 ## 1. Overall Purpose
-This document defines a standardized template structure for prompts intended to guide an Large Language Model (LLM) agent (e.g., SE-Apex) in executing complex, multi-step projects autonomously. The structure emphasizes absolute explicitness, sequential task execution, integrated quality checks referencing the **Apex Software Compliance Standards Guide**, and minimizes ambiguity to ensure reliable completion according to predefined rules and requirements.
+This document defines a standardized template structure for prompts intended to guide an Large Language Model (LLM) agent (e.g., SE-Apex) in executing complex, multi-step projects autonomously. The structure emphasizes absolute explicitness, sequential task execution, integrated quality checks referencing the **Apex Software Compliance Standards Guide**, and minimizes ambiguity to ensure reliable completion according to predefined rules and requirements. This guide is primarily built on existing best practices in software development design patterns, as well as points extracted from a full analysis of NASA's software engineering and systems engineering requirements for safety and utmost quality. This prompt is intended for sophistocated and state of the art LLMs.
 
 ## 2. Core Execution Principles & Global Rules
 The agent executing a prompt based on this template MUST adhere to the following core principles:

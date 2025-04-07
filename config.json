@@ -14,7 +14,7 @@
     }
   },
   "reasoning_tree": {
-    "max_depth": 3,
+    "max_depth": 1,
     "confidence_threshold": 0.3
   },
   "council_orchestrator": {

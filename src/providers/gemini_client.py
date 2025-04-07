@@ -1,24 +1,20 @@
 """
 Client module for interacting with the Google Generative AI (Gemini) API.
-
-Provides functions for configuring the client, initializing the model,
-generating text content, generating structured JSON content, and handling retries.
+Provides synchronous functions for critique council use.
 """
 import google.generativeai as genai
 import json
 import logging
-import asyncio
-from typing import Dict, Any, Tuple, Union # Import Tuple, Union
+import time # Import time for synchronous sleep
+from typing import Dict, Any, Tuple, Union
 
 # Local imports for exceptions
 from .exceptions import ApiKeyError, ApiCallError, ApiResponseError, ApiBlockedError, JsonParsingError, JsonProcessingError
-# Import DeepSeek client for fallback
+# Import DeepSeek client (will also be made synchronous)
 from . import deepseek_v3_client
 
-# Configure logger for this module
 logger = logging.getLogger(__name__)
 
-# Global variables to store initialized model
 _gemini_model = None
 _gemini_model_name = None
 _client_configured = False
@@ -27,7 +23,7 @@ _deepseek_fallback_enabled = False
 def configure_client(api_key: str):
     """Configures the Gemini client with the API key."""
     global _client_configured
-    if _client_configured: return # Skip if already configured
+    if _client_configured: return
     if not api_key:
         logger.error("Attempted to configure Gemini client without an API key.")
         raise ApiKeyError("API key is required to configure the Gemini client.")
@@ -40,7 +36,7 @@ def configure_client(api_key: str):
         raise ApiKeyError(f"Failed to configure Gemini client: {e}") from e
 
 def configure_deepseek_fallback(config: Dict[str, Any]):
-    """Configure the DeepSeek client for fallback if API key is available."""
+    """Configure the DeepSeek client for fallback."""
     global _deepseek_fallback_enabled
     deepseek_config = config.get('deepseek', {})
     api_key = deepseek_config.get('api_key')
@@ -50,6 +46,7 @@ def configure_deepseek_fallback(config: Dict[str, Any]):
         _deepseek_fallback_enabled = False
         return False
     try:
+        # Assuming deepseek client also has a sync configure function
         deepseek_v3_client.configure_client(api_key, base_url)
         _deepseek_fallback_enabled = True
         logger.info("DeepSeek fallback is enabled and configured successfully")
@@ -60,10 +57,10 @@ def configure_deepseek_fallback(config: Dict[str, Any]):
         return False
 
 def get_gemini_model(config: Dict[str, Any]):
-    """Initializes and returns the Gemini generative model based on config."""
+    """Initializes and returns the Gemini generative model."""
     global _gemini_model, _gemini_model_name
-    api_config = config.get('api', {}).get('gemini', {}) # Look under 'gemini' sub-key
-    api_key = config.get('api', {}).get('resolved_key') # Key is still top-level under 'api'
+    api_config = config.get('api', {}).get('gemini', {})
+    api_key = config.get('api', {}).get('resolved_key')
     model_name = api_config.get('model_name', 'gemini-2.5-pro-exp-03-25')
     if _gemini_model is not None and _gemini_model_name == model_name:
         return _gemini_model
@@ -100,20 +97,19 @@ def is_rate_limit_error(exception: Exception) -> bool:
             "rate limit" in error_msg or "too many requests" in error_msg or
             "resource exhausted" in error_msg)
 
-async def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, str]:
+# Make synchronous
+def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, str]:
     """
-    Sends a prompt to the configured Gemini model and returns the text response
-    along with the model name used.
-
-    Returns:
-        Tuple[str, str]: (Generated text content, model name used)
+    Sends a prompt synchronously and returns text response and model name.
     """
     try:
         model = get_gemini_model(config)
         model_name_used = f"Gemini: {model.model_name}"
         logger.debug(f"Sending prompt to {model_name_used}:\n{prompt[:200]}...")
-        response = await model.generate_content_async(prompt)
+        # Use synchronous generate_content call
+        response = model.generate_content(prompt) # No _async
 
+        # Error handling remains largely the same structure
         if not response.candidates:
             blockage_reason = "Unknown"
             safety_ratings = None
@@ -143,26 +139,26 @@ async def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, st
         logger.debug("Gemini response received successfully.")
         text_parts = [part.text for part in candidate.content.parts if hasattr(part, 'text')]
         result_text = ''.join(text_parts)
-        return result_text, model_name_used # Return text and model name
+        return result_text, model_name_used
 
     except (ApiBlockedError, ApiResponseError) as e: raise e
     except Exception as e:
-        if e.__class__.__name__ == 'StopCandidateException':
+        # Handle specific exceptions if the sync library raises different ones
+        if e.__class__.__name__ == 'StopCandidateException': # Assuming name is same
             logger.error(f"Gemini API call stopped: {e}", exc_info=True)
             raise ApiBlockedError(f"Gemini API call stopped: {e}", reason="STOPPED") from e
         logger.error(f"Error during Gemini API call: {e}", exc_info=True)
         raise ApiCallError(f"Error during Gemini API call: {e}") from e
 
-async def generate_structured_content(prompt: str, config: Dict[str, Any], structure_hint: str = "Return only JSON.") -> Tuple[dict, str]:
+# Make synchronous
+def generate_structured_content(prompt: str, config: Dict[str, Any], structure_hint: str = "Return only JSON.") -> Tuple[dict, str]:
     """
-    Sends a prompt expecting a structured (JSON) response from Gemini.
-
-    Returns:
-        Tuple[dict, str]: (Parsed JSON dictionary, model name used)
+    Sends a prompt synchronously expecting structured JSON.
     """
     full_prompt = f"{prompt}\n\n{structure_hint}"
     try:
-        raw_response, model_name_used = await generate_content(full_prompt, config) # Get model name too
+        # Call synchronous generate_content
+        raw_response, model_name_used = generate_content(full_prompt, config) # No await
 
         cleaned_response = raw_response.strip()
         if cleaned_response.startswith("```json"): cleaned_response = cleaned_response[7:]
@@ -176,7 +172,7 @@ async def generate_structured_content(prompt: str, config: Dict[str, Any], struc
 
         parsed_json = json.loads(cleaned_response)
         logger.debug("Successfully parsed JSON response from Gemini.")
-        return parsed_json, model_name_used # Return JSON and model name
+        return parsed_json, model_name_used
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON response: {e}. Raw response was:\n---\n{raw_response}\n---", exc_info=True)
         raise JsonParsingError(f"Gemini response was not valid JSON: {e}") from e
@@ -185,52 +181,51 @@ async def generate_structured_content(prompt: str, config: Dict[str, Any], struc
         logger.error(f"Error processing Gemini structured response: {e}", exc_info=True)
         raise JsonProcessingError(f"Error processing Gemini structured response: {e}") from e
 
-async def call_gemini_with_retry(prompt_template: str, context: dict, config: Dict[str, Any], is_structured: bool = True) -> Tuple[Union[dict, str], str]:
+# Make synchronous
+def call_gemini_with_retry(prompt_template: str, context: dict, config: Dict[str, Any], is_structured: bool = True) -> Tuple[Union[dict, str], str]:
     """
-    Calls the appropriate Gemini client function with retries, using config.
-    Returns the result and the name of the model that successfully responded.
+    Calls the appropriate Gemini client function synchronously with retries.
     """
     global _deepseek_fallback_enabled
+    # Ensure fallback is configured if needed (sync check)
     if not _deepseek_fallback_enabled and 'deepseek' in config and config.get('deepseek',{}).get('api_key'):
         configure_deepseek_fallback(config)
 
     prompt = prompt_template.format(**context)
     last_exception = None
-    max_retries = config.get('api', {}).get('gemini', {}).get('retries', 3) # Get retries from gemini config
+    max_retries = config.get('api', {}).get('gemini', {}).get('retries', 3)
 
     for attempt in range(max_retries):
         try:
             logger.debug(f"Gemini call attempt {attempt + 1}/{max_retries}...")
             if is_structured:
-                response, model_name = await generate_structured_content(prompt, config)
+                response, model_name = generate_structured_content(prompt, config) # No await
             else:
-                response, model_name = await generate_content(prompt, config)
+                response, model_name = generate_content(prompt, config) # No await
             logger.debug(f"Gemini call successful after {attempt + 1} attempt(s) using {model_name}.")
-            return response, model_name # Return result and model name
+            return response, model_name
         except Exception as e:
             last_exception = e
             logger.warning(f"Gemini call attempt {attempt + 1}/{max_retries} failed: {e}")
             if attempt < max_retries - 1:
                 wait_time = 2 ** attempt
                 logger.info(f"Retrying Gemini call in {wait_time} seconds...")
-                await asyncio.sleep(wait_time)
+                time.sleep(wait_time) # Use synchronous sleep
             else:
                 logger.error(f"Max retries ({max_retries}) reached for Gemini. Last error: {last_exception}", exc_info=True)
                 if _deepseek_fallback_enabled and is_rate_limit_error(last_exception):
                     logger.info("Falling back to DeepSeek model after Gemini failure...")
                     try:
+                        # Call synchronous deepseek client
                         if is_structured:
-                            # DeepSeek client needs to return model name too
-                            response, model_name = await deepseek_v3_client.generate_structured_content(prompt, config)
+                            response, model_name = deepseek_v3_client.generate_structured_content(prompt, config) # No await
                         else:
-                            response, model_name = await deepseek_v3_client.generate_content(prompt, config)
+                            response, model_name = deepseek_v3_client.generate_content(prompt, config) # No await
                         logger.info(f"DeepSeek fallback successful using {model_name}.")
-                        return response, model_name # Return result and model name
+                        return response, model_name
                     except Exception as fallback_error:
                         logger.error(f"DeepSeek fallback also failed: {fallback_error}", exc_info=True)
-                        # Fall through to raise original error if fallback fails
 
                 raise ApiCallError(f"Gemini API call failed after {max_retries} retries and fallback attempt (if applicable).") from last_exception
 
-    # This part should ideally not be reached if logic above is correct, but added for safety
     raise ApiCallError(f"Gemini API call failed unexpectedly after {max_retries} retries.") from last_exception

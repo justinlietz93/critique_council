@@ -1,19 +1,17 @@
 """
-Placeholder client module for interacting with the DeepSeek API.
+Synchronous client module for interacting with the DeepSeek API.
 Used as a fallback for the Gemini client.
 """
 import logging
-import aiohttp # Use asynchronous HTTP client
+import requests # Use synchronous requests library
 import json
-from typing import Dict, Any, Tuple, Union # Import Tuple, Union
+from typing import Dict, Any, Tuple, Union
 
 # Import custom exceptions from the same directory
 from .exceptions import ApiKeyError, ApiCallError, ApiResponseError, JsonParsingError
 
-# Configure logger for this module
 logger = logging.getLogger(__name__)
 
-# Global variables for DeepSeek client
 _deepseek_api_key = None
 _deepseek_base_url = None
 _deepseek_configured = False
@@ -30,9 +28,10 @@ def configure_client(api_key: str, base_url: str = 'https://api.deepseek.com/v1'
     _deepseek_configured = True
     logger.info(f"DeepSeek client configured for URL: {_deepseek_base_url}")
 
-async def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, str]:
+# Make synchronous
+def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, str]:
     """
-    Sends a prompt to the configured DeepSeek model using aiohttp.
+    Sends a prompt synchronously to the DeepSeek model using requests.
     Returns the text response and the model name used.
     """
     if not _deepseek_configured:
@@ -40,7 +39,7 @@ async def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, st
 
     deepseek_config = config.get('deepseek', {})
     model_name = deepseek_config.get('model_name', 'deepseek-chat')
-    model_name_used = f"DeepSeek: {model_name}" # Identify provider and model
+    model_name_used = f"DeepSeek: {model_name}"
 
     headers = {
         "Authorization": f"Bearer {_deepseek_api_key}",
@@ -55,10 +54,10 @@ async def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, st
     logger.debug(f"Sending prompt to {model_name_used} at {api_url}...")
 
     try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.post(api_url, json=payload, timeout=60) as response:
-                response.raise_for_status()
-                data = await response.json()
+        # Use synchronous requests.post
+        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status() # Raise HTTPError for bad responses
+        data = response.json()
 
         if not data.get('choices') or not data['choices'][0].get('message') or not data['choices'][0]['message'].get('content'):
             logger.error(f"DeepSeek response missing expected content: {data}")
@@ -66,34 +65,28 @@ async def generate_content(prompt: str, config: Dict[str, Any]) -> Tuple[str, st
 
         result_text = data['choices'][0]['message']['content']
         logger.debug("DeepSeek response received successfully.")
-        return result_text.strip(), model_name_used # Return text and model name
+        return result_text.strip(), model_name_used
 
-    except aiohttp.ClientError as e:
+    except requests.exceptions.RequestException as e:
         logger.error(f"Error during DeepSeek API call: {e}", exc_info=True)
         raise ApiCallError(f"Error during DeepSeek API call: {e}") from e
     except json.JSONDecodeError as e:
-        raw_text = "Could not retrieve raw text"
-        try:
-             async with aiohttp.ClientSession(headers=headers) as session:
-                 async with session.post(api_url, json=payload, timeout=60) as response_again:
-                     raw_text = await response_again.text()
-        except Exception: pass
-        logger.error(f"Failed to decode JSON response from DeepSeek: {e}. Raw response: {raw_text}", exc_info=True)
+        logger.error(f"Failed to decode JSON response from DeepSeek: {e}. Raw response: {response.text}", exc_info=True)
         raise JsonParsingError(f"DeepSeek response was not valid JSON: {e}") from e
     except Exception as e:
         logger.error(f"Unexpected error during DeepSeek call: {e}", exc_info=True)
         raise ApiCallError(f"Unexpected error during DeepSeek call: {e}") from e
 
-
-async def generate_structured_content(prompt: str, config: Dict[str, Any], structure_hint: str = "Return only JSON.") -> Tuple[dict, str]:
+# Make synchronous
+def generate_structured_content(prompt: str, config: Dict[str, Any], structure_hint: str = "Return only JSON.") -> Tuple[dict, str]:
     """
-    Sends a prompt expecting structured JSON from DeepSeek using aiohttp.
-    Returns the parsed JSON and the model name used.
+    Sends a prompt synchronously expecting structured JSON from DeepSeek.
     """
     full_prompt = f"{prompt}\n\n{structure_hint}"
 
     try:
-        raw_response, model_name_used = await generate_content(full_prompt, config) # Get model name too
+        # Call synchronous generate_content
+        raw_response, model_name_used = generate_content(full_prompt, config) # No await
 
         cleaned_response = raw_response.strip()
         if cleaned_response.startswith("```json"): cleaned_response = cleaned_response[7:]
@@ -107,7 +100,7 @@ async def generate_structured_content(prompt: str, config: Dict[str, Any], struc
 
         parsed_json = json.loads(cleaned_response)
         logger.debug("Successfully parsed JSON response from DeepSeek.")
-        return parsed_json, model_name_used # Return JSON and model name
+        return parsed_json, model_name_used
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON response from DeepSeek: {e}. Raw response was:\n---\n{raw_response}\n---", exc_info=True)
