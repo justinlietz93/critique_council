@@ -44,6 +44,14 @@ def format_critique_node(node: Optional[Dict[str, Any]], depth: int = 0) -> List
         for line in evidence_lines: lines.append(f"{indent}    > {line}")
     if arbitration:
         lines.append(f"{indent}  - **Expert Arbitration:** {arbitration}")
+    # Add Recommendation if present
+    recommendation = node.get('recommendation')
+    if recommendation:
+        lines.append(f"{indent}  - **Recommendation:** {recommendation}")
+    # Add Concession if present and not "None"
+    concession = node.get('concession')
+    if concession and concession.strip().lower() != "none":
+        lines.append(f"{indent}  - **Concession:** {concession}")
 
     # Recursively format children, increasing depth
     if sub_critiques:
