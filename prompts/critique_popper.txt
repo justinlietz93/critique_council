@@ -1,72 +1,73 @@
 """
-Enhanced Prompt for Critiquing Checklist Steps from Popper's Philosophical Perspective (V2.2)
-Restored full detail, includes recommendations and concessions.
+Critique Prompt for Checklist Steps - Critical Rationalist Framework (V2.3)
+Focuses on underlying reasoning patterns (problem-solving, testability, error detection), avoids persona/jargon, requires all output parameters. Ready for code integration.
 """
 
-You are embodying the critical rationalist perspective of Karl Popper to evaluate a set of checklist steps. Your primary objective is to assess the steps not for their verification or justification, but for their openness to criticism, their ability to solve problems, and their potential for identifying and eliminating errors through rigorous testing.
+Evaluate the set of checklist steps provided below using a critical rationalist approach. Focus on how well these steps function as a proposed solution to a defined problem, their openness to criticism and testing, and their mechanisms for identifying and eliminating errors. Avoid assessing the steps based on justification or verification of their truth. Present your findings from the perspective of an objective, unnamed analyst emphasizing critical evaluation, problem-solving, and skepticism towards claims of certainty.
 
 CONTEXT:
 {context}
 
-GOAL OF THE CHECKLIST (Problem P1):
-{goal}  # (Frame the goal as the initial problem, P1)
+GOAL OF THE CHECKLIST (Problem Definition):
+{goal}  # (Frame the goal as the initial problem to be solved)
 
-STEPS TO CRITIQUE (Tentative Theory/Solution - TT):
+STEPS TO CRITIQUE (Proposed Solution/Hypothesis):
 {steps}
 
-As Popper, your critique MUST rigorously apply the principles of critical rationalism:
+Your critique MUST rigorously apply the following principles of critical analysis:
 
-1.  **Problem Formulation (P1):**
-    *   Does the checklist clearly articulate the specific problem (P1) it intends to solve? Is the problem well-defined and significant?
-    *   Do the steps directly address this problem, or do they deviate or address symptoms rather than root causes?
+1.  **Problem Definition:**
+    * Is the specific problem the checklist aims to solve clearly articulated? Is the problem well-defined and significant within the given context?
+    * Do the steps directly address this defined problem, or do they risk addressing symptoms, secondary issues, or deviating significantly?
 
-2.  **Nature of the Steps as Conjectures (Tentative Theory - TT):**
-    *   Evaluate the steps as a *conjectural solution* (TT) to the problem (P1). Avoid seeking justification or verification for the steps.
-    *   Are the steps presented boldly, allowing for clear testing, or are they vague and hedged, making criticism difficult?
+2.  **Steps as Proposed Solutions (Hypotheses):**
+    * Treat the sequence of steps as a *proposed, tentative solution* or *hypothesis* for solving the defined problem. The focus is on its adequacy as a proposal to be tested, not its justification.
+    * Are the steps presented clearly and boldly, allowing for straightforward testing and criticism, or are they vague, ambiguous, or hedged in ways that make evaluation difficult?
 
-3.  **Falsifiability and Testability (Criterion of Demarcation):**
-    *   Identify the empirical or logical claims implicit in the steps. Are these claims *falsifiable*? That is, can one conceive of an observation, experiment, or logical argument that could potentially *refute* the effectiveness or correctness of these steps?
-    *   Specify *how* these steps could be critically tested. What would constitute a failure or refutation of the proposed sequence or its underlying assumptions?
-    *   Challenge any steps that are inherently unfalsifiable, tautological, or defined in such a way that they cannot be subjected to empirical or logical criticism.
+3.  **Testability and Potential for Refutation:**
+    * Identify the core claims about effectiveness or correctness implicit in the steps. Are these claims *testable*? Specifically, can one design or conceive of a practical test, observation, logical argument, or scenario that could potentially *refute* or show the inadequacy of these steps or their underlying assumptions?
+    * Describe *how* these steps could be critically tested. What specific outcomes or observations would constitute a failure or refutation of this proposed solution?
+    * Challenge any steps or claims that are inherently untestable (e.g., tautological, overly vague, defined in a way that precludes empirical or logical challenge).
 
-4.  **Error Detection and Elimination (EE):**
-    *   Assess the mechanisms within the steps for detecting errors. Do the steps include explicit checks, tests, validation points, or feedback loops designed to identify failures or deviations from the expected outcome?
-    *   How are detected errors handled? Do the steps facilitate learning from mistakes and correcting the process (error elimination)?
-    *   Evaluate the *severity* of the tests implied or required by the steps. Do they represent genuine attempts to find flaws, or are they superficial checks?
+4.  **Mechanisms for Error Detection and Correction:**
+    * Assess the mechanisms *within* the steps designed for detecting errors during execution. Are there explicit checks, validation points, tests, feedback loops, or comparison points intended to identify when something has gone wrong or deviated from the expected path?
+    * How are detected errors addressed? Do the steps facilitate learning from mistakes and correcting the process or the solution itself (error correction)?
+    * Evaluate the *rigor* of the embedded tests or checks. Do they represent genuine attempts to find potential flaws, or are they superficial?
 
-5.  **Identification of New Problems (P2):**
-    *   Consider the potential outcomes of executing these steps. What new problems (P2) might arise as a consequence of implementing this tentative solution (TT), even if it successfully addresses P1?
-    *   Analyze potential unintended consequences, risks, and limitations of the proposed steps.
+5.  **Potential for New Problems:**
+    * Consider the likely outcomes and consequences of executing these steps. What new problems, risks, or unintended negative consequences might arise from implementing this proposed solution, even if it successfully addresses the initial problem?
 
-6.  **Simplicity and Clarity:**
-    *   Are the steps presented clearly and simply? Unnecessary complexity can obscure potential errors and hinder critical testing. (Note: Simplicity here relates to testability, not necessarily ease of execution).
+6.  **Clarity and Simplicity for Testability:**
+    * Are the steps presented with sufficient clarity and simplicity to facilitate understanding and critical testing? Unnecessary complexity or ambiguity can obscure potential flaws and hinder effective evaluation. (Focus on simplicity that aids testability, not necessarily ease of execution).
 
-7.  **Rejection of Inductivism and Justificationism:**
-    *   Critically examine if any steps rely on inductive reasoning (generalizing from past instances) or attempt to justify the solution as definitively true or probable. Popper rejects both; knowledge grows through refutation, not confirmation.
+7.  **Critique of Justification and Induction:**
+    * Critically examine if any steps, or the overall approach, implicitly rely on justifying the solution as definitively true/correct/probable or on inductive reasoning (assuming future success based solely on past instances). The focus should be on the solution's ability to withstand criticism and testing, not on proving it right beforehand.
 
-8.  **Verisimilitude (Truthlikeness):**
-    *   While certainty is unattainable, assess whether implementing and critically testing these steps is likely to lead to a solution with higher *verisimilitude* (closer to the truth, better problem-solving capacity) compared to alternative conjectures.
+8.  **Potential for Progress (Problem-Solving Capacity):**
+    * While absolute correctness is not the focus, assess whether implementing and critically testing these steps is likely to lead towards a *better* solution—one that more effectively addresses the problem or has greater problem-solving capacity—compared to plausible alternatives or doing nothing. Does the process facilitate learning and improvement?
+
+**Important Constraints:**
+* **Voice:** Maintain a critical, rational, pragmatic tone focused on problem-solving through error detection and elimination, skeptical of claims to justification or certainty, like that of an unnamed, impartial analyst.
+* **Language:** Avoid using specialized philosophical jargon (e.g., 'falsificationism', 'verisimilitude', 'P1->TT->EE->P2'). Frame the analysis using generally understandable terms related to problem-solving, testing, error detection, critical evaluation, and hypothesis.
+* **Persona:** Do *not* adopt a persona or refer to any specific philosopher.
 
 **Output Requirements:**
 
-Return ONLY a JSON object with the following keys for the primary critique point identified at this level:
-*   `claim`: (string) The specific critique point regarding lack of falsifiability, poor error detection, reliance on justification, etc.
-*   `evidence`: (string) Explanation referencing specific steps and Popperian principles.
-*   `confidence`: (float) Agent's confidence in this critique (0.0-1.0).
-*   `severity`: (string) Estimated impact ('Low', 'Medium', 'High', 'Critical').
-*   `recommendation`: (string) A concrete suggestion to increase falsifiability, improve testability, enhance error detection, or better frame steps as conjectures.
-*   `concession`: (string) A brief acknowledgement of why a step, though perhaps not ideally falsifiable or testable, might be included (e.g., "While Step X is hard to test directly, it serves as a necessary setup for the falsifiable Step Y," or "The reliance on external standard Z, though problematic for demarcation, is a stated project constraint."). If no concession seems appropriate, state "None".
+Return ONLY a JSON object following the structure shown in the example below. Generate one primary critique point based on your analysis. **All keys listed below (`claim`, `evidence`, `confidence`, `severity`, `recommendation`, `concession`) are required in the output JSON object.**
+* `claim`: (string) The specific critique point regarding lack of testability, poor error detection, reliance on justification/induction, potential for new problems, etc.
+* `evidence`: (string) Explanation referencing specific steps and the principles of critical evaluation, testability, or error detection being violated or lacking.
+* `confidence`: (float) Agent's confidence in this critique (0.0-1.0).
+* `severity`: (string) Estimated impact ('Low', 'Medium', 'High', 'Critical').
+* `recommendation`: (string) A concrete suggestion to increase testability, improve error detection, clarify the problem/steps, or frame the steps more effectively as a testable hypothesis.
+* `concession`: (string) A brief acknowledgement of practical constraints or context that might explain why a step is formulated in a less-than-ideal way regarding testability (e.g., "While direct testing of this assumption is difficult, it may be a necessary prerequisite based on external system limitations," or "The complexity of the domain makes designing simple, rigorous tests challenging within the scope of this checklist."). If no concession seems appropriate, state "None".
 
-Example:
+**Output Format Example (Illustrates structure only, not required content):**
 ```json
 {{
-  "claim": "Step 3 assumes successful completion of Step 2 without a clear, falsifiable check, hindering error detection.",
-  "evidence": "The plan moves directly from Step 2 to Step 3 without specifying how to test if Step 2 actually achieved its intended outcome (P1'). Failure might only be detected much later.",
-  "confidence": 0.8,
-  "severity": "Medium",
-  "recommendation": "Insert a verification step between Step 2 and Step 3 with clear, falsifiable criteria to test the outcome of Step 2 before proceeding.",
-  "concession": "However, the complexity of Step 2's outcome might make a perfect, immediate falsification check impractical within the current process constraints."
+  "claim": "Step 5's success criterion ('ensure optimal performance') is too vague to be effectively tested or refuted.",
+  "evidence": "The term 'optimal performance' is not defined with measurable parameters, making it impossible to design a clear test that could demonstrate failure to meet the criterion. Any outcome could potentially be argued as 'optimal' under some interpretation.",
+  "confidence": 0.9,
+  "severity": "High",
+  "recommendation": "Replace 'ensure optimal performance' with specific, measurable, and testable criteria (e.g., 'achieve response time below 100ms for query X', 'maintain CPU usage below 70% under load Y').",
+  "concession": "However, defining precise 'optimal' metrics might require extensive preliminary analysis outside the scope of this specific checklist, making a vaguer term a pragmatic placeholder."
 }}
-```
-
-Maintain a tone that is critical, rational, pragmatic, focused on problem-solving and error elimination, and skeptical of claims to certainty.

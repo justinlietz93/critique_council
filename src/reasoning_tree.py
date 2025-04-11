@@ -25,10 +25,20 @@ def execute_reasoning_tree(
     agent_style: str,
     config: Dict[str, Any],
     agent_logger: Optional[logging.Logger] = None,
-    depth: int = 0
+    depth: int = 0,
+    assigned_points: Optional[List[Dict[str, Any]]] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Recursively generates a critique tree synchronously.
+    
+    Args:
+        initial_content: Content to critique
+        style_directives: Directives for the critique style
+        agent_style: Style identifier for the agent
+        config: Configuration settings
+        agent_logger: Optional logger to use
+        depth: Current depth in the reasoning tree
+        assigned_points: Optional list of points assigned to this agent
     """
     current_logger = agent_logger or module_logger
     current_logger.info(f"Depth {depth}: Starting analysis...")
@@ -53,18 +63,32 @@ def execute_reasoning_tree(
     severity = "N/A"
     recommendation = "N/A"
     concession = "N/A" # Initialize concession field
+    assigned_point_id = None # Initialize assigned point ID
     sub_topics_for_recursion = []
     model_used_for_assessment = "N/A"
     model_used_for_decomposition = "N/A"
+    
+    # Handle assigned points at the top level only
+    current_assigned_point = None
+    if depth == 0 and assigned_points and len(assigned_points) > 0:
+        # For the top level analysis, select one of the assigned points
+        # We'll rotate through assigned points as we generate sub-topics
+        current_assigned_point = assigned_points[0]
+        current_logger.info(f"Depth {depth}: Using assigned point: {current_assigned_point.get('id')}")
+        assigned_point_id = current_assigned_point.get('id')
 
     # 2. Generate Assessment (Synchronous Call)
     # Use the prompt loaded by the agent, which now includes concession request
     assessment_prompt_template = style_directives # Use the full prompt content directly
+    
+    # Enhance context with assigned point information if available
     assessment_context = {
         # Context needed by the prompt template placeholders
         "context": "Critiquing provided steps.", # Generic context if not passed separately
         "goal": config.get("goal", "N/A"), # Pass goal if available in config
-        "steps": initial_content # Pass the current content segment as 'steps'
+        "steps": initial_content, # Pass the current content segment as 'steps'
+        "assigned_point_id": assigned_point_id, # Add assigned point ID if available
+        "assigned_point": current_assigned_point.get('point', '') if current_assigned_point else None # Add assigned point text if available
     }
     try:
         assessment_result, model_used_for_assessment = call_with_retry(
@@ -148,17 +172,28 @@ Return ONLY a JSON list of strings, where each string is a concise description o
         current_logger.debug(f"Depth {depth}: Using placeholder content division for recursion based on {len(sub_topics_for_recursion)} identified topics.")
         num_sub_points = len(sub_topics_for_recursion)
         segment_len = len(initial_content) // num_sub_points if num_sub_points > 0 else len(initial_content)
+        
+        # Distribute any remaining assigned points to sub-topics
+        remaining_points = assigned_points[1:] if assigned_points and depth == 0 else None
 
         for i, sub_topic in enumerate(sub_topics_for_recursion):
             sub_content = initial_content[i * segment_len : (i + 1) * segment_len]
             current_logger.info(f"Depth {depth}: Recursing on sub-topic {i+1} ('{sub_topic}')...")
+            
+            # Pass points to sub-topics if available
+            sub_assigned_points = None
+            if remaining_points and i < len(remaining_points):
+                sub_assigned_points = [remaining_points[i]]
+                current_logger.info(f"Depth {depth}: Assigning point {remaining_points[i].get('id')} to sub-topic {i+1}")
+            
             child_node = execute_reasoning_tree(
                 initial_content=sub_content,
                 style_directives=style_directives,
                 agent_style=agent_style,
                 config=config,
                 agent_logger=current_logger,
-                depth=depth + 1
+                depth=depth + 1,
+                assigned_points=sub_assigned_points
             )
             if child_node:
                 sub_critiques.append(child_node)
@@ -174,6 +209,10 @@ Return ONLY a JSON list of strings, where each string is a concise description o
         'concession': concession, # Add concession to node
         'sub_critiques': sub_critiques
     }
+    
+    # Add assigned point information if available
+    if assigned_point_id:
+        current_node['assigned_point_id'] = assigned_point_id
 
     current_logger.info(f"Depth {depth}: Analysis complete for this level.")
     return current_node

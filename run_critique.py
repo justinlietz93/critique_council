@@ -8,6 +8,7 @@ import argparse # Added argparse
 from dotenv import load_dotenv
 from src import critique_goal_document # Now synchronous
 from src.scientific_review_formatter import format_scientific_peer_review
+from src.latex.cli import add_latex_arguments, handle_latex_output
 
 # Function to load configuration from JSON file
 def load_config(path="config.json"):
@@ -41,6 +42,10 @@ def main():
     parser.add_argument("input_file", help="Path to the input content file (e.g., content.txt).")
     parser.add_argument("--PR", "--peer-review", action="store_true",
                         help="Enable Peer Review mode, enhancing personas with SME perspective.")
+    parser.add_argument("--scientific", action="store_true",
+                        help="Use scientific methodology agents instead of philosophical agents.")
+    # Add LaTeX-related arguments
+    parser = add_latex_arguments(parser)
     args = parser.parse_args()
     # -------------------------
 
@@ -125,10 +130,17 @@ def main():
     input_file = args.input_file
     peer_review_mode = args.PR # or args.peer_review
 
-    root_logger.info(f"Initiating critique for: {input_file} (Peer Review Mode: {peer_review_mode})")
+    scientific_mode = args.scientific
+    
+    root_logger.info(f"Initiating critique for: {input_file} (Peer Review Mode: {peer_review_mode}, Scientific Mode: {scientific_mode})")
     try:
-        # Pass peer_review_mode to the critique function
-        final_critique_report = critique_goal_document(input_file, module_config, peer_review=peer_review_mode) # No await
+        # Pass peer_review_mode and scientific_mode to the critique function
+        final_critique_report = critique_goal_document(
+            input_file, 
+            module_config, 
+            peer_review=peer_review_mode,
+            scientific_mode=scientific_mode
+        )
 
         # Save standard critique report
         output_dir = "critiques"
@@ -146,7 +158,7 @@ def main():
         
         # If peer review mode is active, generate formal scientific peer review
         if peer_review_mode:
-            root_logger.info("Peer Review mode active - Generating scientific peer review format...")
+            root_logger.info(f"Peer Review mode active - Generating scientific peer review format... (Scientific Mode: {scientific_mode})")
             try:
                 # Read the original content
                 with open(input_file, 'r', encoding='utf-8') as f:
@@ -156,7 +168,8 @@ def main():
                 scientific_review = format_scientific_peer_review(
                     original_content=original_content,
                     critique_report=final_critique_report,
-                    config=module_config
+                    config=module_config,
+                    scientific_mode=scientific_mode
                 )
                 
                 # Save the scientific peer review to a separate file
@@ -168,10 +181,77 @@ def main():
                 root_logger.info(pr_success_msg)
                 print(f"\n{pr_success_msg}")
                 
+                # Generate LaTeX document if requested
+                if args.latex:
+                    try:
+                        # Read the original content again to be safe
+                        with open(input_file, 'r', encoding='utf-8') as f:
+                            original_content = f.read()
+                            
+                        # Generate the LaTeX document
+                        latex_success, tex_path, pdf_path = handle_latex_output(
+                            args, 
+                            original_content,
+                            final_critique_report,
+                            scientific_review,
+                            scientific_mode  # Pass the scientific mode flag
+                        )
+                        
+                        if latex_success:
+                            if tex_path:
+                                latex_success_msg = f"LaTeX document successfully saved to {tex_path}"
+                                root_logger.info(latex_success_msg)
+                                print(f"\n{latex_success_msg}")
+                            if pdf_path:
+                                pdf_success_msg = f"PDF document successfully saved to {pdf_path}"
+                                root_logger.info(pdf_success_msg)
+                                print(f"\n{pdf_success_msg}")
+                        else:
+                            latex_error_msg = "Failed to generate LaTeX document"
+                            root_logger.error(latex_error_msg)
+                            print(f"\nWarning: {latex_error_msg}")
+                    except Exception as e:
+                        latex_error_msg = f"Error generating LaTeX document: {e}"
+                        root_logger.error(latex_error_msg, exc_info=True)
+                        print(f"\nWarning: {latex_error_msg}")
+                
             except Exception as e:
                 pr_error_msg = f"Error generating scientific peer review: {e}"
                 root_logger.error(pr_error_msg, exc_info=True)
                 print(f"\nWarning: {pr_error_msg}")
+                
+        # If LaTeX is requested but peer review is not, generate LaTeX with just the critique
+        elif args.latex:
+            try:
+                # Read the original content
+                with open(input_file, 'r', encoding='utf-8') as f:
+                    original_content = f.read()
+                    
+                # Generate the LaTeX document without peer review
+                latex_success, tex_path, pdf_path = handle_latex_output(
+                    args, 
+                    original_content,
+                    final_critique_report,
+                    scientific_mode=scientific_mode  # Pass the scientific mode flag
+                )
+                
+                if latex_success:
+                    if tex_path:
+                        latex_success_msg = f"LaTeX document successfully saved to {tex_path}"
+                        root_logger.info(latex_success_msg)
+                        print(f"\n{latex_success_msg}")
+                    if pdf_path:
+                        pdf_success_msg = f"PDF document successfully saved to {pdf_path}"
+                        root_logger.info(pdf_success_msg)
+                        print(f"\n{pdf_success_msg}")
+                else:
+                    latex_error_msg = "Failed to generate LaTeX document"
+                    root_logger.error(latex_error_msg)
+                    print(f"\nWarning: {latex_error_msg}")
+            except Exception as e:
+                latex_error_msg = f"Error generating LaTeX document: {e}"
+                root_logger.error(latex_error_msg, exc_info=True)
+                print(f"\nWarning: {latex_error_msg}")
 
     except FileNotFoundError as e:
         error_msg = f"Input file not found at {input_file}"

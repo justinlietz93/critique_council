@@ -1,0 +1,60 @@
+
+\documentclass[12pt,reqno]{amsart}
+
+\usepackage{graphicx}
+
+\usepackage{amssymb}
+\usepackage{amsthm}
+\theoremstyle{plain}
+
+\newtheorem*{theorem*}{Theorem}
+%% this allows for theorems which are not automatically numbered
+
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{example}{Example}
+\usepackage{lineno}
+
+%% The above lines are for formatting.  In general, you will not want to change these.
+
+
+\title{Theorem $2.1$}
+
+\author{Adrienne Stanley}
+
+\begin{document}
+
+\begin{abstract}
+We prove theorem $2.1$ using the method of proof by way of contradiction.  This theorem states that for any set $A$, that in fact the empty set is a subset of $A$, that is $\emptyset \subset A$.
+\end{abstract}
+
+\maketitle
+
+We first start with a discussion of subsets.
+
+\begin{definition}
+Let $A$ and $B$ be sets.  We say $A$ is a subset of $B$ if every element in $A$ is also an element of $B$ and we write $A \subset B$.  This can also be written as
+$$ (A \subset B) \leftrightarrow \forall x ( x \in A \to x \in B).$$
+\end{definition}
+
+Notice that for sets $A$ and $B$, if $A \not\subset B$, then there exists an element $x$ such that $x \in A$ and $x \notin B$.  That is,
+$$(A \not\subset B) \leftrightarrow \exists x ( x \in A \wedge x \notin B).$$
+
+\begin{example}
+Let $A = \{ 1, 2, 3, 4, 5 \} $, $B = \{ 1, 2 \}$ and $C = \{ 1, 7 \}$.  We can see that every element in $B$ is an element of $A$.  Further, we can see that $C$ contains an element, namely $7$, which is not in $A$.  Thus, $B \subset A$ and $C \not\subset A.$
+\end{example}
+
+We now prove theorem $2.1$.
+
+\begin{theorem*}[2.1]
+For any set $A$, $\emptyset \subset A$.
+\end{theorem*}
+
+\begin{proof}
+By way of contradiction, suppose that the theorem fails.  Let $A$ be a set such that $\emptyset \not\subset A.$  From the above discussion, we can see that there exists an element $x$ such that $x \in \emptyset$ and $x \notin A$.  Let $x$ be such an element.  Since the emptyset has no elements, then $x \notin \emptyset$.  Thus, we have that $x \in \emptyset$ and $x \notin \emptyset.$ This contradiction proves that the theorem is true.
+\end{proof}
+
+
+
+\end{document}

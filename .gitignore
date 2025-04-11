@@ -95,6 +95,10 @@ out/
 *.key
 credentials*
 secrets*
-
 STANDARDS_REPOSITORY
-storage/*
+file_stash/*
+
+# Output files
+latex_output/*
+storage/
+storage/arxiv_cache/

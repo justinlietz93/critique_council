@@ -1,0 +1,30 @@
+\documentclass{article}
+
+% Include LaTeX preamble with necessary packages
+\input{preamble}
+
+% Document metadata
+\title{$title$}
+\author{$author$}
+\date{$date$}
+
+\begin{document}
+
+% Title section
+\maketitle
+
+% Abstract
+\begin{abstract}
+$abstract$
+\end{abstract}
+
+% Main content
+$content$
+
+% Add bibliography if enabled
+$if(include_bibliography)$
+\bibliographystyle{plain}
+\bibliography{bibliography}
+$endif$
+
+\end{document}

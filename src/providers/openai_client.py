@@ -79,17 +79,17 @@ def call_openai_with_retry(
         {"role": "user", "content": formatted_prompt}
     ]
     
-    # Determine if we're using an o1 model which requires a completely different API endpoint
-    is_o1_model = 'o1' in default_model.lower()
+    # Determine if we're using an o1 or o3-mini model which requires the responses.create API endpoint
+    is_response_api_model = 'o1' in default_model.lower() or 'o3-mini' in default_model.lower()
     
-    if is_o1_model:
+    if is_response_api_model:
         # o1 models use the responses.create API with a completely different structure
         o1_params = {
             "model": default_model,
             # Prepend system message to formatted prompt for o1 models since they don't have a separate system message parameter
             "input": [
                 {
-                    "role": "system",
+                    "role": "developer",
                     "content": [
                         {
                             "type": "input_text",
@@ -138,27 +138,73 @@ def call_openai_with_retry(
         try:
             logger.debug(f"Calling OpenAI API with model {default_model} (attempt {retry_count + 1})")
             
-            # Make the API call - different endpoint for o1 models
-            if is_o1_model:
-                logger.debug(f"Using responses.create API for o1 model with params: {model_params}")
+            # Make the API call - different endpoint for o1 and o3-mini models
+            if is_response_api_model:
+                logger.debug(f"Using responses.create API for {default_model} model with params: {model_params}")
                 response = client.responses.create(**model_params)
                 
-                # Extract content from o1 response format
-                if hasattr(response, 'output') and hasattr(response.output, 'content'):
-                    content = response.output.content
-                else:
-                    # Handle unexpected response structure
-                    logger.error(f"Unexpected o1 response structure: {response}")
-                    raise ModelCallError(f"Unexpected o1 response structure: {response}")
-                
-                # Parse JSON if structured
-                if is_structured and content:
-                    try:
-                        content_dict = json.loads(content)
-                        return content_dict, default_model
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to parse o1 JSON response: {e}. Content: {content}")
-                        raise ModelCallError(f"Failed to parse o1 JSON response: {e}")
+                # Extract content from o1 response format which has a complex structure
+                try:
+                    # More flexible approach - don't rely on specific indices
+                    json_found = False
+                    
+                    if hasattr(response, 'output'):
+                        # Find the message component in the output list
+                        for output_item in response.output:
+                            if hasattr(output_item, 'content') and hasattr(output_item, 'role') and output_item.role == 'assistant':
+                                # Found the assistant's message
+                                for content_item in output_item.content:
+                                    if hasattr(content_item, 'text'):
+                                        content = content_item.text
+                                        logger.debug(f"Successfully extracted content from response API: {content[:100]}...")
+                                        
+                                        # Parse JSON if structured
+                                        if is_structured and content:
+                                            # The content often contains a JSON object
+                                            try:
+                                                content_dict = json.loads(content)
+                                                logger.debug(f"Successfully parsed JSON from {default_model} response")
+                                                json_found = True
+                                                return content_dict, default_model
+                                            except json.JSONDecodeError as e:
+                                                logger.error(f"Failed to parse {default_model} JSON response: {e}. Content: {content}")
+                                                # Continue with returning the raw text
+                                        
+                                        # Return raw text if no JSON or not structured
+                                        if not json_found:
+                                            return content, default_model
+                    
+                    # If we get here, try direct access to output fields based on error logs
+                    logger.warning("Couldn't find content with flexible approach, trying direct access...")
+                    if hasattr(response, 'output') and isinstance(response.output, list) and len(response.output) > 1:
+                        output_msg = response.output[1]  # Second item in output is the message
+                        
+                        if hasattr(output_msg, 'content') and isinstance(output_msg.content, list) and len(output_msg.content) > 0:
+                            output_text = output_msg.content[0]  # First item in content is the text
+                            
+                            if hasattr(output_text, 'text'):
+                                content = output_text.text
+                                logger.debug(f"Extracted content via direct access: {content[:100]}...")
+                                
+                                # Parse JSON if structured
+                                if is_structured and content:
+                                    try:
+                                        content_dict = json.loads(content)
+                                        return content_dict, default_model
+                                    except json.JSONDecodeError as e:
+                                        logger.error(f"Failed to parse {default_model} JSON response: {e}. Content: {content}")
+                                        # Continue with returning the raw text
+                                
+                                return content, default_model
+                    
+                    # If we get here, the structure didn't match expectations
+                    logger.error(f"Failed to extract content from {default_model} response: {response}")
+                    # Instead of raising an error, try to return the entire response as string to help debugging
+                    return str(response), default_model
+                    
+                except Exception as e:
+                    logger.error(f"Error processing {default_model} response: {e}. Response: {response}")
+                    raise ModelCallError(f"Error processing {default_model} response: {e}")
             else:
                 logger.debug(f"Using Chat Completions API endpoint with params: {model_params}")
                 response = client.chat.completions.create(**model_params)

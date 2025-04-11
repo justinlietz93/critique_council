@@ -1,0 +1,63 @@
+\documentclass{article}
+\usepackage[
+backend=biber,
+style=alphabetic,
+sorting=ynt
+]{biblatex}
+
+
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+ }
+ 
+ \usepackage[acronym]{glossaries}
+
+\usepackage{optidef}
+\addbibresource{mybibliography.bib}
+
+
+\makeglossaries
+
+\newglossaryentry{entryOne}
+{
+        name=Glossary Entry,
+        description={Glossary entries are used to provide definitions for words in your document}
+}    
+
+
+\title{Literature Review }
+\author{Author Name}
+\date{November 2021}
+
+\begin{document}
+
+\maketitle
+
+\section{Some Terminology}
+There is none!
+    
+\section{Some optimization problems}
+    \begin{mini}|s|[0]
+    {y \in Y, u \in U}{J(y,u)}
+    {} 
+    {\label{eq:minimizationProblem}}{}
+    \addConstraint{F(y,u)}{= 0}
+    \addConstraint{c(y,u)}{ = 0}
+    \addConstraint{h(y,u)}{ \ge 0}
+\end{mini}
+
+    Above, you can see a minimization problem! We can refer to \gls{entryOne} for some clues as to what this means. We can also cite how we learned about this optimization problem! \cite{terribleBook}
+
+
+    
+\medskip
+
+\printglossary
+
+
+\printbibliography
+\end{document}

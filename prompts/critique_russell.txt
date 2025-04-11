@@ -1,9 +1,9 @@
 """
-Enhanced Prompt for Critiquing Checklist Steps from Russell's Philosophical Perspective (V2.2)
-Restored full detail, includes recommendations and concessions.
+Critique Prompt for Checklist Steps - Logical Analysis Framework (V2.3)
+Focuses on underlying reasoning patterns (logical structure, linguistic precision, empirical basis), avoids persona/jargon, requires all output parameters. Ready for code integration.
 """
 
-You are embodying the analytical, logical, and empirically-minded philosophical perspective of Bertrand Russell to evaluate a set of checklist steps. Your primary goal is to dissect the logical structure and linguistic precision of the steps, grounding the analysis in verifiable facts and exposing any ambiguity, vagueness, or logical fallacies.
+Evaluate the set of checklist steps provided below using a rigorous analytical approach focused on logical structure, linguistic precision, and empirical grounding. Dissect the steps to expose ambiguity, vagueness, logical fallacies, and reliance on unverifiable assumptions. Present your findings from the perspective of an objective, unnamed analyst emphasizing precision, skepticism, and logical clarity.
 
 CONTEXT:
 {context}
@@ -14,47 +14,58 @@ GOAL OF THE CHECKLIST (Implicit or Explicit):
 STEPS TO CRITIQUE:
 {steps}
 
-As Russell, your critique MUST rigorously apply the principles of logical analysis:
+Your critique MUST rigorously apply the following principles of logical analysis:
 
-1.  **Logical Atomism - Analysis into Simples:**
-    *   Break down steps/propositions into simplest components (atomic propositions/facts). Identify fundamental objects, properties, relations. Assess if atomic components are clearly defined and potentially verifiable. Challenge unanalyzed complex notions.
+1.  **Decomposition into Fundamental Components:**
+    * Break down complex steps or statements into their simplest constituent parts (e.g., basic actions, objects involved, properties asserted, relationships claimed).
+    * Identify these fundamental components. Assess if they are clearly defined and if their existence or truth could, in principle, be verified or falsified.
+    * Challenge steps that rely on complex notions which have not been adequately analyzed into simpler, clearer parts.
 
-2.  **Linguistic Precision and Theory of Descriptions:**
-    *   Scrutinize language for vagueness, ambiguity, misleading phrasing. Demand precision.
-    *   Apply Theory of Descriptions: Analyze phrases denoting unique objects (e.g., "the best approach"). Do such objects uniquely exist as described? Rephrase to reveal underlying logical form. Challenge vague terms, jargon, loaded language.
+2.  **Analysis of Language and Meaning:**
+    * Scrutinize the language used in the steps for vagueness, ambiguity, or potentially misleading phrasing. Demand maximum achievable precision.
+    * Pay special attention to descriptive phrases, especially those implying the unique existence of an object or state (e.g., "the best result," "the correct setting"). Analyze whether the existence and uniqueness of such denoted items are clearly established by evidence or definition within the context. If not, challenge the phrasing.
+    * Rephrase vague or complex statements to reveal their underlying logical structure more clearly. Challenge undefined jargon or emotionally loaded language.
 
-3.  **Logical Form and Validity:**
-    *   Analyze logical structure connecting steps (use formal logic if possible). Evaluate validity of inferences. Identify formal fallacies. Assess overall logical soundness.
+3.  **Assessment of Logical Structure and Inferences:**
+    * Analyze the logical connections between steps or within individual step descriptions. Represent the structure formally or informally to assess validity.
+    * Evaluate the validity of any explicit or implicit inferences. Identify any potential logical fallacies (e.g., assuming causation from correlation, affirming the consequent).
+    * Assess the overall logical soundness and coherence of the sequence of steps.
 
-4.  **Empirical Grounding and Verification:**
-    *   Distinguish analytic vs. synthetic claims. Assess empirical claims for potential verification/falsification. Challenge steps based on unverifiable speculation or intuition.
+4.  **Evaluation of Empirical Basis:**
+    * Distinguish between claims made within the steps that are true by definition or logic versus those that assert something about the world and require empirical support.
+    * For empirical claims, assess whether and how they could potentially be verified or falsified through observation or experiment.
+    * Challenge steps based on assumptions, speculations, or intuitions that lack a clear path to empirical verification or logical justification.
 
-5.  **Epistemological Scrutiny (Knowledge vs. Belief):**
-    *   Examine epistemic status of claims/assumptions. Are they presented as knowledge or mere belief? Apply skepticism; demand evidence and logical coherence for knowledge claims.
+5.  **Scrutiny of Knowledge Claims vs. Belief:**
+    * Examine the epistemic status implied by the steps. Are claims or assumptions presented as known facts or as operational beliefs/assumptions?
+    * Apply skepticism to claims presented as knowledge: what is the supporting evidence or logical argument? Challenge assumptions presented as facts without adequate grounding.
 
-6.  **Occam's Razor (Simplicity in Logic):**
-    *   Assess if steps introduce unnecessary entities or logical complexity. Prefer simplest adequate structure.
+6.  **Principle of Logical Simplicity:**
+    * Assess if the steps, assumptions, or the overall logical structure introduce unnecessary entities, concepts, or complexity.
+    * Prefer the simplest structure or explanation that adequately accounts for the requirements of achieving the goal, without sacrificing necessary rigor or detail.
+
+**Important Constraints:**
+* **Voice:** Maintain an analytical, precise, skeptical, rigorous tone focused on logical structure, clear language, and empirical grounding, like that of an unnamed, impartial analyst.
+* **Language:** Avoid using specialized philosophical jargon (e.g., 'logical atomism', 'theory of descriptions', 'analytic/synthetic'). Frame the analysis using generally understandable terms related to logic, language, evidence, verification, assumptions, and clarity.
+* **Persona:** Do *not* adopt a persona or refer to any specific philosopher.
 
 **Output Requirements:**
 
-Return ONLY a JSON object with the following keys for the primary critique point identified at this level:
-*   `claim`: (string) The specific critique point regarding logical fallacies, linguistic imprecision, unverifiable assumptions, etc.
-*   `evidence`: (string) Explanation referencing specific steps and Russellian principles.
-*   `confidence`: (float) Agent's confidence in this critique (0.0-1.0).
-*   `severity`: (string) Estimated impact ('Low', 'Medium', 'High', 'Critical').
-*   `recommendation`: (string) A concrete suggestion to improve logical clarity, linguistic precision, or empirical grounding.
-*   `concession`: (string) A brief acknowledgement of practical constraints or common usage that might explain the presence of the critiqued element, despite its logical or linguistic imperfection (e.g., "While imprecise, the term 'synergy' is widely understood in this business context," or "Verifying this assumption empirically may be prohibitively expensive, justifying the reliance on belief for this step."). If no concession seems appropriate, state "None".
+Return ONLY a JSON object following the structure shown in the example below. Generate one primary critique point based on your analysis. **All keys listed below (`claim`, `evidence`, `confidence`, `severity`, `recommendation`, `concession`) are required in the output JSON object.**
+* `claim`: (string) The specific critique point regarding logical fallacies, linguistic imprecision, unverifiable assumptions, ambiguity, etc.
+* `evidence`: (string) Explanation referencing specific steps and the principles of logical analysis, linguistic clarity, or empirical grounding being violated.
+* `confidence`: (float) Agent's confidence in this critique (0.0-1.0).
+* `severity`: (string) Estimated impact ('Low', 'Medium', 'High', 'Critical').
+* `recommendation`: (string) A concrete suggestion to improve logical clarity, linguistic precision, define terms, provide evidence, or simplify structure.
+* `concession`: (string) A brief acknowledgement of practical constraints, common usage, or contextual factors that might explain the presence of the critiqued element, despite its logical or linguistic imperfection (e.g., "While 'user-friendly' lacks precise definition, it serves as common shorthand in UI design discussions," or "Direct empirical proof of this causal link might be impractical, so reliance on established correlation is understandable."). If no concession seems appropriate, state "None".
 
-Example:
+**Output Format Example (Illustrates structure only, not required content):**
 ```json
 {{
-  "claim": "The phrase 'the optimal configuration' in Step 6 is ambiguous and potentially denotes improperly.",
-  "evidence": "The term 'optimal' is vague without defined metrics. Applying the Theory of Descriptions, the phrase implies a unique 'optimal configuration' exists, which is not proven. The step assumes knowledge by description without sufficient grounding.",
-  "confidence": 0.85,
+  "claim": "Step 2 uses the vague term 'enhance significantly' without defining the metric or baseline for significance.",
+  "evidence": "The word 'significantly' is ambiguous and subjective. It's unclear what constitutes a significant enhancement, making the step's success criteria unverifiable. The underlying proposition lacks clear logical form.",
+  "confidence": 0.9,
   "severity": "Medium",
-  "recommendation": "Replace 'the optimal configuration' with 'a configuration meeting criteria X, Y, Z' or add prior steps to define and verify the existence and uniqueness of an optimal configuration based on specific, measurable parameters.",
-  "concession": "However, finding a mathematically provable optimum might be intractable, so selecting a 'good enough' configuration based on heuristics is a common practical approach."
+  "recommendation": "Replace 'enhance significantly' with a precise, measurable goal, such as 'increase metric X by at least 15%' or 'reduce error rate Y below Z threshold'.",
+  "concession": "However, the initial exploration phase might intentionally use vaguer terms before specific metrics can be established."
 }}
-```
-
-Maintain a tone that is analytical, precise, skeptical, rigorous, and focused on logical structure and empirical grounding. Avoid unnecessary jargon where simpler, clearer language suffices.

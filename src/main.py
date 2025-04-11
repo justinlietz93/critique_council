@@ -13,10 +13,23 @@ from .council_orchestrator import run_critique_council # Now synchronous
 from .output_formatter import format_critique_output
 
 # Make synchronous
-def critique_goal_document(file_path: str, config: Dict[str, Any], peer_review: bool = False) -> str: # Added peer_review flag
+def critique_goal_document(
+    file_path: str, 
+    config: Dict[str, Any], 
+    peer_review: bool = False,
+    scientific_mode: bool = False
+) -> str:
     """
     Reads content, runs critique sequentially, returns formatted assessment.
-    Accepts a peer_review flag to modify persona behavior.
+    
+    Args:
+        file_path: Path to the content file to analyze
+        config: Configuration dictionary
+        peer_review: Whether to enable peer review mode with SME personas
+        scientific_mode: Whether to use scientific methodology agents instead of philosophers
+        
+    Returns:
+        Formatted critique output as a string
     """
     logger = logging.getLogger(__name__) # Get logger
 
@@ -25,9 +38,14 @@ def critique_goal_document(file_path: str, config: Dict[str, Any], peer_review: 
         content = read_file_content(file_path)
         logger.debug("Input read successfully.")
 
-        logger.debug(f"Step 2: Running critique council... (Peer Review: {peer_review})")
-        # Call synchronous council function, passing peer_review flag
-        critique_data = run_critique_council(content, config, peer_review=peer_review) # No await
+        logger.debug(f"Step 2: Running critique council... (Peer Review: {peer_review}, Scientific Mode: {scientific_mode})")
+        # Call synchronous council function with all parameters
+        critique_data = run_critique_council(
+            content, 
+            config, 
+            peer_review=peer_review,
+            scientific_mode=scientific_mode
+        )
         logger.debug("Council finished.")
 
         logger.debug(f"Step 3: Formatting output... (Peer Review: {peer_review})")

@@ -1,44 +1,84 @@
 # src/critique_module/council_orchestrator.py
 
 """
-Manages the Reasoning Council workflow. Includes initial critique by philosophical
-agents followed by arbitration from a subject-matter expert agent.
-Runs agents sequentially.
+Manages the Reasoning Council workflow. Includes initial content assessment,
+critiques by either philosophical agents or scientific methodology agents,
+followed by arbitration from a subject-matter expert agent.
+Runs agents sequentially and distributes content points among critics.
 """
 import logging
 import sys
 import os
 import json
-from typing import Dict, List, Any, Type, Optional
+import random
+from typing import Dict, List, Any, Type, Optional, Union
 
 # Import agent implementations
 from .reasoning_agent import (
-    ReasoningAgent, AristotleAgent, DescartesAgent, KantAgent,
-    LeibnizAgent, PopperAgent, RussellAgent, ExpertArbiterAgent
+    ReasoningAgent, 
+    # Philosophical agents
+    AristotleAgent, DescartesAgent, KantAgent, LeibnizAgent, PopperAgent, RussellAgent,
+    # Scientific methodology agents
+    SystemsAnalystAgent, FirstPrinciplesAnalystAgent, BoundaryConditionAnalystAgent,
+    OptimizationAnalystAgent, EmpiricalValidationAnalystAgent, LogicalStructureAnalystAgent,
+    # Arbiters
+    ExpertArbiterAgent, ScientificExpertArbiterAgent
 )
+from .content_assessor import ContentAssessor
 
-# Define philosopher agent types
+# Define agent types
 PHILOSOPHER_AGENT_CLASSES: List[Type[ReasoningAgent]] = [
     AristotleAgent, DescartesAgent, KantAgent, LeibnizAgent, PopperAgent, RussellAgent
 ]
 
+SCIENTIFIC_AGENT_CLASSES: List[Type[ReasoningAgent]] = [
+    SystemsAnalystAgent, FirstPrinciplesAnalystAgent, BoundaryConditionAnalystAgent,
+    OptimizationAnalystAgent, EmpiricalValidationAnalystAgent, LogicalStructureAnalystAgent
+]
+
 # --- Agent-Specific Logging Setup ---
 LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
+PHILOSOPHY_LOG_DIR = os.path.join(LOG_DIR, "philosophy")
+SCIENCE_LOG_DIR = os.path.join(LOG_DIR, "science")
 
-def setup_agent_logger(agent_name: str) -> logging.Logger:
-    """Sets up a dedicated file logger for an agent."""
-    log_file = os.path.join(LOG_DIR, f"agent_{agent_name}.log")
+# Create all necessary log directories
+os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(PHILOSOPHY_LOG_DIR, exist_ok=True)
+os.makedirs(SCIENCE_LOG_DIR, exist_ok=True)
+
+def setup_agent_logger(agent_name: str, scientific_mode: bool = False) -> logging.Logger:
+    """
+    Sets up a dedicated file logger for an agent.
+    
+    Args:
+        agent_name: Name of the agent for the logger
+        scientific_mode: Whether to use science subdirectory (vs philosophy)
+        
+    Returns:
+        Configured logger instance
+    """
+    # Determine the appropriate log directory
+    agent_log_dir = SCIENCE_LOG_DIR if scientific_mode else PHILOSOPHY_LOG_DIR
+    
+    # Create the log file path
+    log_file = os.path.join(agent_log_dir, f"agent_{agent_name}.log")
+    
+    # Configure the logger
     logger = logging.getLogger(f"agent.{agent_name}")
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
+    
+    # Remove any existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
         handler.close()
+    
+    # Add a file handler that overwrites previous logs
     file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+    
     return logger
 # ------------------------------------
 
@@ -66,41 +106,93 @@ def apply_adjustments_to_tree(node: Optional[Dict[str, Any]], adjustment_map: Di
 
 
 # Synchronous version
-def run_critique_council(content: str, config: Dict[str, Any], peer_review: bool = False) -> Dict[str, Any]: # Added peer_review flag
+def run_critique_council(
+    content: str, 
+    config: Dict[str, Any], 
+    peer_review: bool = False,
+    scientific_mode: bool = False
+) -> Dict[str, Any]:
     """
-    Orchestrates the critique process: philosophers critique, then expert arbitrates.
-    Accepts a peer_review flag to modify agent persona behavior.
-    Returns full adjusted trees and arbitration details including score.
+    Orchestrates the critique process: initial content assessment, critics evaluate, then expert arbitrates.
+    
+    Args:
+        content: The content to analyze
+        config: Configuration settings
+        peer_review: Whether to use peer review enhancements (default: False)
+        scientific_mode: Whether to use scientific methodology agents instead of philosophers (default: False)
+        
+    Returns:
+        Dictionary with adjusted critique trees and arbitration details including score
     """
     root_logger = logging.getLogger(__name__)
 
-    if not PHILOSOPHER_AGENT_CLASSES:
-         root_logger.error("PHILOSOPHER_AGENT_CLASSES list is empty.")
-         raise ValueError("PHILOSOPHER_AGENT_CLASSES list is empty.")
+    # Determine which agent classes to use based on mode
+    agent_classes = SCIENTIFIC_AGENT_CLASSES if scientific_mode else PHILOSOPHER_AGENT_CLASSES
+    agent_type_name = "scientific methodology" if scientific_mode else "philosopher"
+    
+    if not agent_classes:
+         root_logger.error(f"{agent_type_name.capitalize()} agent classes list is empty.")
+         raise ValueError(f"{agent_type_name.capitalize()} agent classes list is empty.")
+    
+    # 1. Initialize and Run Content Assessor to extract objective points
+    print("Starting Initial Content Assessment...")
+    content_assessor = ContentAssessor()
+    assessor_logger = setup_agent_logger(content_assessor.style, scientific_mode)
+    if hasattr(content_assessor, 'set_logger'): content_assessor.set_logger(assessor_logger)
+    
+    try:
+        extracted_points = content_assessor.extract_points(content, config)
+        print(f"Initial Content Assessment completed. Extracted {len(extracted_points)} objective points.")
+    except Exception as e:
+        root_logger.error(f"Error during content assessment: {e}", exc_info=True)
+        assessor_logger.error(f"Content assessment failed: {e}", exc_info=True)
+        # If assessment fails, proceed without points
+        extracted_points = []
+        print("Content Assessment failed. Proceeding without extracted points.")
+    
+    # Distribute points among agents if points were extracted
+    points_per_agent = {}
+    if extracted_points:
+        # Create a roughly equal distribution of points for each agent
+        total_agents = len(agent_classes)
+        points_per_agent_count = max(1, len(extracted_points) // total_agents)
+        
+        # Shuffle points for random distribution
+        shuffled_points = extracted_points.copy()
+        random.shuffle(shuffled_points)
+        
+        # Distribute points to agents
+        for i, agent_cls in enumerate(agent_classes):
+            start_idx = i * points_per_agent_count
+            end_idx = start_idx + points_per_agent_count if i < total_agents - 1 else len(shuffled_points)
+            points_per_agent[agent_cls.__name__] = shuffled_points[start_idx:end_idx]
+            
+        print(f"Distributed extracted points among {total_agents} {agent_type_name} agents.")
 
-    # 1. Instantiate Philosopher Agents and Setup Loggers
-    philosopher_agents: List[ReasoningAgent] = []
+    # 1. Instantiate Agents and Setup Loggers
+    reasoning_agents: List[ReasoningAgent] = []
     agent_loggers: Dict[str, logging.Logger] = {}
-    for agent_cls in PHILOSOPHER_AGENT_CLASSES:
+    for agent_cls in agent_classes:
         agent = agent_cls()
-        agent_logger = setup_agent_logger(agent.style)
+        agent_logger = setup_agent_logger(agent.style, scientific_mode)
         agent_loggers[agent.style] = agent_logger
         if hasattr(agent, 'set_logger'): agent.set_logger(agent_logger)
-        philosopher_agents.append(agent)
-    total_philosophers = len(philosopher_agents)
+        reasoning_agents.append(agent)
+    total_agents = len(reasoning_agents)
 
-    # 2. Initial Critique Round (Philosophers run sequentially)
-    print(f"Starting Initial Critique Round ({total_philosophers} philosopher agents)...")
+    # 2. Initial Critique Round (Agents run sequentially with their assigned points)
+    print(f"Starting Initial Critique Round ({total_agents} {agent_type_name} agents)...")
     initial_critiques: List[Dict[str, Any]] = []
     initial_errors = 0
-    for i, agent in enumerate(philosopher_agents):
+    for i, agent in enumerate(reasoning_agents):
         agent_style = agent.style
         agent_logger = agent_loggers[agent_style]
         status = "OK"
         print(f"  Running Initial Critique for Agent '{agent_style}' (Peer Review: {peer_review})...")
         try:
-            # Pass peer_review flag to agent's critique method
-            result = agent.critique(content, config, agent_logger, peer_review=peer_review)
+            # Pass peer_review flag and assigned points to agent's critique method
+            agent_points = points_per_agent.get(type(agent).__name__, [])
+            result = agent.critique(content, config, agent_logger, peer_review=peer_review, assigned_points=agent_points)
             initial_critiques.append(result)
         except Exception as e:
             root_logger.error(f"Error during initial critique from agent '{agent_style}' (Peer Review: {peer_review}): {e}", exc_info=True)
@@ -113,8 +205,9 @@ def run_critique_council(content: str, config: Dict[str, Any], peer_review: bool
 
     # 3. Arbitration Round (Expert Arbiter runs once)
     print(f"Starting Arbitration Round...")
-    arbiter_agent = ExpertArbiterAgent()
-    arbiter_logger = setup_agent_logger(arbiter_agent.style)
+    # Use the appropriate arbiter based on mode
+    arbiter_agent = ScientificExpertArbiterAgent() if scientific_mode else ExpertArbiterAgent()
+    arbiter_logger = setup_agent_logger(arbiter_agent.style, scientific_mode)
     if hasattr(arbiter_agent, 'set_logger'): arbiter_agent.set_logger(arbiter_logger)
 
     # Initialize arbiter result structure
