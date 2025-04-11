@@ -39,3 +39,11 @@ class JsonParsingError(ApiResponseError):
 class JsonProcessingError(ApiResponseError):
     """Error during processing of the parsed JSON response."""
     pass
+
+class ModelCallError(ProviderError):
+    """Error during a model API call."""
+    pass
+
+class MaxRetriesExceededError(ProviderError):
+    """Error when maximum number of retries is exceeded."""
+    pass

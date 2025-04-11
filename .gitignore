@@ -95,3 +95,6 @@ out/
 *.key
 credentials*
 secrets*
+
+STANDARDS_REPOSITORY
+storage/*

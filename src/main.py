@@ -13,9 +13,10 @@ from .council_orchestrator import run_critique_council # Now synchronous
 from .output_formatter import format_critique_output
 
 # Make synchronous
-def critique_goal_document(file_path: str, config: Dict[str, Any]) -> str:
+def critique_goal_document(file_path: str, config: Dict[str, Any], peer_review: bool = False) -> str: # Added peer_review flag
     """
     Reads content, runs critique sequentially, returns formatted assessment.
+    Accepts a peer_review flag to modify persona behavior.
     """
     logger = logging.getLogger(__name__) # Get logger
 
@@ -24,14 +25,14 @@ def critique_goal_document(file_path: str, config: Dict[str, Any]) -> str:
         content = read_file_content(file_path)
         logger.debug("Input read successfully.")
 
-        logger.debug("Step 2: Running critique council...")
-        # Call synchronous council function
-        critique_data = run_critique_council(content, config) # No await
+        logger.debug(f"Step 2: Running critique council... (Peer Review: {peer_review})")
+        # Call synchronous council function, passing peer_review flag
+        critique_data = run_critique_council(content, config, peer_review=peer_review) # No await
         logger.debug("Council finished.")
 
-        logger.debug("Step 3: Formatting output...")
-        # Pass original content and config needed for Judge summary
-        formatted_output = format_critique_output(critique_data, content, config)
+        logger.debug(f"Step 3: Formatting output... (Peer Review: {peer_review})")
+        # Pass original content, config, and peer_review flag needed for Judge summary
+        formatted_output = format_critique_output(critique_data, content, config, peer_review=peer_review)
         logger.debug("Output formatted.")
 
         logger.info("Critique process completed successfully.")

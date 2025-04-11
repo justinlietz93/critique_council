@@ -1,5 +1,6 @@
 {
   "api": {
+    "primary_provider": "openai",
     "gemini": {
       "model_name": "gemini-2.5-pro-exp-03-25",
       "retries": 3,
@@ -11,6 +12,12 @@
     "deepseek": {
       "model_name": "deepseek-reasoner",
       "base_url": "https://api.deepseek.com/v1"
+    },
+    "openai": {
+      "model": "o1",
+      "retries": 3,
+      "temperature": 0.2,
+      "max_tokens": 8192
     }
   },
   "reasoning_tree": {

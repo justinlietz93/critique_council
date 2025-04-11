@@ -13,11 +13,26 @@ from typing import Dict, List, Any, Optional
 
 # Import reasoning tree logic
 from .reasoning_tree import execute_reasoning_tree # Now synchronous
-# Import LLM client for Arbiter
-from .providers import gemini_client
+# Import provider factory for LLM clients
+from .providers import call_with_retry
 
 # Define the base path for prompts relative to this file's location
 PROMPT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'prompts'))
+
+# Define the Peer Review enhancement text
+PEER_REVIEW_ENHANCEMENT = """
+
+--- PEER REVIEW ENHANCEMENT ---
+Additionally, adopt the rigorous perspective of a deeply technical scientific researcher and subject matter expert within the specific domain of the input content. You must create a specific scientific persona with the following:
+
+1. Full name with appropriate title (e.g., "Dr. Elizabeth Chen")
+2. Academic credentials (Ph.D. or equivalent in a field directly relevant to the content)
+3. Institutional affiliation (university, research institute, etc.)
+4. Relevant specialization and experience (e.g., "15 years of research in quantum computing")
+
+Your analysis must reflect this expertise, focusing on technical accuracy, methodological soundness, and advanced domain-specific insights, while still adhering to your core philosophical persona instructions. You should introduce yourself with these credentials at the beginning of your critique.
+--- END PEER REVIEW ENHANCEMENT ---
+"""
 
 module_logger = logging.getLogger(__name__)
 
@@ -38,24 +53,32 @@ class ReasoningAgent(ABC):
         pass
 
     # Synchronous
-    def critique(self, content: str, config: Dict[str, Any], agent_logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
+    def critique(self, content: str, config: Dict[str, Any], agent_logger: Optional[logging.Logger] = None, peer_review: bool = False) -> Dict[str, Any]: # Added peer_review flag
         """
-        Generates an initial critique synchronously.
+        Generates an initial critique synchronously. Applies peer review enhancement if flag is set.
         """
         current_logger = agent_logger or self.logger
-        current_logger.info(f"Starting initial critique...")
-        style_directives = self.get_style_directives()
-        if "ERROR:" in style_directives:
-             current_logger.error(f"Cannot perform critique due to prompt loading error: {style_directives}")
+        current_logger.info(f"Starting initial critique... (Peer Review: {peer_review})")
+
+        # Get base directives
+        base_style_directives = self.get_style_directives()
+        if "ERROR:" in base_style_directives:
+             current_logger.error(f"Cannot perform critique due to prompt loading error: {base_style_directives}")
              return {
                  'agent_style': self.style,
                  'critique_tree': {},
-                 'error': f"Failed to load style directives: {style_directives}"
+                 'error': f"Failed to load style directives: {base_style_directives}"
              }
+
+        # Apply enhancement if needed
+        final_style_directives = base_style_directives
+        if peer_review:
+            final_style_directives += PEER_REVIEW_ENHANCEMENT
+            current_logger.info("Peer Review enhancement applied to style directives.")
 
         critique_tree_result = execute_reasoning_tree(
             initial_content=content,
-            style_directives=style_directives,
+            style_directives=final_style_directives, # Use potentially enhanced directives
             agent_style=self.style,
             config=config,
             agent_logger=current_logger
@@ -193,20 +216,28 @@ class ExpertArbiterAgent(ReasoningAgent):
          raise NotImplementedError("ExpertArbiterAgent does not perform self-critique.")
 
     # Synchronous arbitration method
-    def arbitrate(self, original_content: str, initial_critiques: List[Dict[str, Any]], config: Dict[str, Any], agent_logger: Optional[logging.Logger] = None) -> Dict[str, Any]:
+    def arbitrate(self, original_content: str, initial_critiques: List[Dict[str, Any]], config: Dict[str, Any], agent_logger: Optional[logging.Logger] = None, peer_review: bool = False) -> Dict[str, Any]: # Added peer_review flag
         """
         Evaluates critiques, provides adjustments, and calculates an arbiter score.
+        Applies peer review enhancement if flag is set.
         Returns a dictionary including 'adjustments', 'arbiter_overall_score',
         'arbiter_score_justification', and potentially 'error'.
         """
         current_logger = agent_logger or self.logger
-        current_logger.info("Starting arbitration...")
+        current_logger.info(f"Starting arbitration... (Peer Review: {peer_review})")
 
-        style_directives = self.get_style_directives()
-        if "ERROR:" in style_directives:
-             current_logger.error(f"Cannot perform arbitration due to prompt loading error: {style_directives}")
+        # Get base directives
+        base_style_directives = self.get_style_directives()
+        if "ERROR:" in base_style_directives:
+             current_logger.error(f"Cannot perform arbitration due to prompt loading error: {base_style_directives}")
              # Return structure indicating error but including expected keys if possible
-             return {'agent_style': self.style, 'adjustments': [], 'arbiter_overall_score': None, 'arbiter_score_justification': None, 'error': style_directives}
+             return {'agent_style': self.style, 'adjustments': [], 'arbiter_overall_score': None, 'arbiter_score_justification': None, 'error': base_style_directives}
+
+        # Apply enhancement if needed
+        final_style_directives = base_style_directives
+        if peer_review:
+            final_style_directives += PEER_REVIEW_ENHANCEMENT
+            current_logger.info("Peer Review enhancement applied to arbiter directives.")
 
         try:
             critiques_json_str = json.dumps(initial_critiques, indent=2)
@@ -222,8 +253,8 @@ class ExpertArbiterAgent(ReasoningAgent):
 
         try:
             # Expecting structured JSON with adjustments, score, and justification
-            arbitration_result, model_used = gemini_client.call_gemini_with_retry(
-                prompt_template=style_directives,
+            arbitration_result, model_used = call_with_retry(
+                prompt_template=final_style_directives, # Use potentially enhanced directives
                 context=arbitration_context,
                 config=config,
                 is_structured=True

@@ -11,8 +11,12 @@ import json
 import os
 from typing import Dict, List, Any, Optional, Tuple
 
-# Import LLM client for Judge summary
-from .providers import gemini_client # Assuming sync version
+# Import LLM clients
+from .providers import gemini_client # For backward compatibility
+from .providers import openai_client # For PR mode
+
+# Import the peer review enhancement text
+from .reasoning_agent import PEER_REVIEW_ENHANCEMENT
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +68,10 @@ def format_critique_node(node: Optional[Dict[str, Any]], depth: int = 0) -> List
 # ---------------------------------------------------------
 
 # --- Helper function to generate Judge summary and score ---
-def generate_judge_summary_and_score(original_content: str, adjusted_trees: List[Dict[str, Any]], arbiter_data: Dict[str, Any], config: Dict[str, Any]) -> Tuple[str, Optional[int], str]:
+def generate_judge_summary_and_score(original_content: str, adjusted_trees: List[Dict[str, Any]], arbiter_data: Dict[str, Any], config: Dict[str, Any], peer_review: bool = False) -> Tuple[str, Optional[int], str]:
     """Calls LLM with Judge prompt to generate summary, score, and justification."""
     judge_logger = logging.getLogger('JudgeSummary')
-    judge_logger.info("Attempting to generate Judge Summary and Score...")
+    judge_logger.info(f"Attempting to generate Judge Summary and Score... (Peer Review: {peer_review})")
     default_return = ("Error: Judge summary generation failed.", None, "N/A")
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -82,12 +86,31 @@ def generate_judge_summary_and_score(original_content: str, adjusted_trees: List
             "arbitration_data_json": json.dumps(arbiter_data, indent=2)
         }
 
-        judge_result, model_used = gemini_client.call_gemini_with_retry(
-            prompt_template=judge_prompt_template,
-            context=context,
-            config=config,
-            is_structured=True
-        )
+        # Apply enhancement if needed
+        final_judge_prompt = judge_prompt_template
+        if peer_review:
+            final_judge_prompt += PEER_REVIEW_ENHANCEMENT
+            judge_logger.info("Peer Review enhancement applied to judge prompt.")
+
+        # Determine which provider to use based on config
+        primary_provider = config.get('api', {}).get('primary_provider', 'gemini')
+        
+        if primary_provider == 'openai' and 'openai' in config.get('api', {}).get('providers', {}):
+            # Use OpenAI if it's the primary provider
+            judge_result, model_used = openai_client.call_openai_with_retry(
+                prompt_template=final_judge_prompt,
+                context=context,
+                config=config,
+                is_structured=True
+            )
+        else:
+            # Default to Gemini for backward compatibility
+            judge_result, model_used = gemini_client.call_gemini_with_retry(
+                prompt_template=final_judge_prompt,
+                context=context,
+                config=config,
+                is_structured=True
+            )
 
         if isinstance(judge_result, dict) and all(k in judge_result for k in ['judge_summary_text', 'judge_overall_score', 'judge_score_justification']):
             summary = judge_result['judge_summary_text'].strip()
@@ -111,9 +134,10 @@ def generate_judge_summary_and_score(original_content: str, adjusted_trees: List
 # --------------------------------------------------
 
 
-def format_critique_output(critique_data: Dict[str, Any], original_content: str, config: Dict[str, Any]) -> str:
+def format_critique_output(critique_data: Dict[str, Any], original_content: str, config: Dict[str, Any], peer_review: bool = False) -> str:
     """
     Formats the synthesized critique data into a detailed Markdown report string.
+    Accepts a peer_review flag to modify Judge persona behavior.
     """
     output_lines = []
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -133,7 +157,7 @@ def format_critique_output(critique_data: Dict[str, Any], original_content: str,
 
     # --- Generate Judge Summary and Score ---
     judge_summary, judge_score, judge_justification = generate_judge_summary_and_score(
-        original_content, adjusted_trees, arbiter_data, config
+        original_content, adjusted_trees, arbiter_data, config, peer_review=peer_review
     )
 
     # --- Judge Summary Section ---

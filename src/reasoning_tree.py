@@ -9,8 +9,8 @@ from typing import Dict, List, Any, Optional
 import uuid
 import json
 
-# Import the Gemini client function
-from .providers import gemini_client
+# Import the provider factory
+from .providers import call_with_retry, ProviderError, ApiCallError, ApiResponseError, JsonParsingError, JsonProcessingError
 
 # Default configuration values
 DEFAULT_MAX_DEPTH = 3
@@ -67,7 +67,7 @@ def execute_reasoning_tree(
         "steps": initial_content # Pass the current content segment as 'steps'
     }
     try:
-        assessment_result, model_used_for_assessment = gemini_client.call_gemini_with_retry(
+        assessment_result, model_used_for_assessment = call_with_retry(
             prompt_template=assessment_prompt_template,
             context=assessment_context,
             config=config,
@@ -85,7 +85,7 @@ def execute_reasoning_tree(
              current_logger.warning(f"Depth {depth}: Unexpected assessment structure received from {model_used_for_assessment}: {assessment_result}")
              pass
 
-    except (gemini_client.ApiCallError, gemini_client.ApiResponseError, gemini_client.JsonParsingError, gemini_client.JsonProcessingError) as e:
+    except (ApiCallError, ApiResponseError, JsonParsingError, JsonProcessingError) as e:
         current_logger.error(f"Depth {depth}: Failed to generate assessment: {e}")
         confidence = 0.0
     except Exception as e:
@@ -123,7 +123,7 @@ Return ONLY a JSON list of strings, where each string is a concise description o
         "content": initial_content
     }
     try:
-        decomposition_result, model_used_for_decomposition = gemini_client.call_gemini_with_retry(
+        decomposition_result, model_used_for_decomposition = call_with_retry(
             prompt_template=decomposition_prompt_template,
             context=decomposition_context,
             config=config,
@@ -136,7 +136,7 @@ Return ONLY a JSON list of strings, where each string is a concise description o
             current_logger.warning(f"Depth {depth}: Unexpected decomposition structure received from {model_used_for_decomposition}: {decomposition_result}")
             pass
 
-    except (gemini_client.ApiCallError, gemini_client.ApiResponseError, gemini_client.JsonParsingError, gemini_client.JsonProcessingError) as e:
+    except (ApiCallError, ApiResponseError, JsonParsingError, JsonProcessingError) as e:
         current_logger.error(f"Depth {depth}: Failed to identify decomposition points: {e}")
     except Exception as e:
         current_logger.error(f"Depth {depth}: Unexpected error during decomposition: {e}")

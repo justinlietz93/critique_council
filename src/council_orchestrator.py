@@ -66,9 +66,10 @@ def apply_adjustments_to_tree(node: Optional[Dict[str, Any]], adjustment_map: Di
 
 
 # Synchronous version
-def run_critique_council(content: str, config: Dict[str, Any]) -> Dict[str, Any]:
+def run_critique_council(content: str, config: Dict[str, Any], peer_review: bool = False) -> Dict[str, Any]: # Added peer_review flag
     """
     Orchestrates the critique process: philosophers critique, then expert arbitrates.
+    Accepts a peer_review flag to modify agent persona behavior.
     Returns full adjusted trees and arbitration details including score.
     """
     root_logger = logging.getLogger(__name__)
@@ -96,12 +97,13 @@ def run_critique_council(content: str, config: Dict[str, Any]) -> Dict[str, Any]
         agent_style = agent.style
         agent_logger = agent_loggers[agent_style]
         status = "OK"
-        print(f"  Running Initial Critique for Agent '{agent_style}'...")
+        print(f"  Running Initial Critique for Agent '{agent_style}' (Peer Review: {peer_review})...")
         try:
-            result = agent.critique(content, config, agent_logger)
+            # Pass peer_review flag to agent's critique method
+            result = agent.critique(content, config, agent_logger, peer_review=peer_review)
             initial_critiques.append(result)
         except Exception as e:
-            root_logger.error(f"Error during initial critique from agent '{agent_style}': {e}", exc_info=True)
+            root_logger.error(f"Error during initial critique from agent '{agent_style}' (Peer Review: {peer_review}): {e}", exc_info=True)
             agent_logger.error(f"Initial critique failed: {e}", exc_info=True)
             initial_critiques.append({'agent_style': agent_style, 'critique_tree': {}, 'error': str(e)})
             initial_errors += 1
@@ -121,8 +123,9 @@ def run_critique_council(content: str, config: Dict[str, Any]) -> Dict[str, Any]
     try:
         valid_critiques_for_arbiter = [c for c in initial_critiques if 'error' not in c]
         if valid_critiques_for_arbiter:
-             # Capture the full result dictionary from arbitrate
-             arbitration_result = arbiter_agent.arbitrate(content, valid_critiques_for_arbiter, config, arbiter_logger)
+             print(f"  Running Arbiter Agent '{arbiter_agent.style}' (Peer Review: {peer_review})...")
+             # Capture the full result dictionary from arbitrate, passing peer_review flag
+             arbitration_result = arbiter_agent.arbitrate(content, valid_critiques_for_arbiter, config, arbiter_logger, peer_review=peer_review)
              # Update the result data structure
              arbitration_result_data['adjustments'] = arbitration_result.get('adjustments', [])
              arbitration_result_data['arbiter_overall_score'] = arbitration_result.get('arbiter_overall_score')
