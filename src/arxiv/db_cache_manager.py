@@ -12,7 +12,7 @@ import hashlib
 import logging
 import sqlite3
 from typing import Dict, Any, Optional, Union
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import threading
 
 # Set up logging
@@ -159,12 +159,63 @@ class ArxivDBCacheManager:
                     if row:
                         logger.debug(f"Cache hit for query hash: {query_hash}")
                         response_data = row['response_data']
-                        return json.loads(response_data)
+                        return self._json_deserialize(response_data)
                     
                     logger.debug(f"Cache miss for query hash: {query_hash}")
                     return None
             except Exception as e:
                 logger.warning(f"Error retrieving from cache: {e}")
+                return None
+    
+    def _json_serialize(self, obj: Any) -> str:
+        """
+        Custom JSON serialization with improved error handling and support for complex objects.
+        
+        Args:
+            obj: The object to serialize
+            
+        Returns:
+            JSON string representation of the object
+            
+        Raises:
+            Exception: If serialization fails
+        """
+        class EnhancedJSONEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, (datetime, date)):
+                    return obj.isoformat()
+                if hasattr(obj, '__dict__'):
+                    return obj.__dict__
+                return super().default(obj)
+        
+        try:
+            return json.dumps(obj, cls=EnhancedJSONEncoder, ensure_ascii=False, default=str)
+        except Exception as e:
+            logger.warning(f"Enhanced JSON serialization failed: {e}")
+            # Fallback to basic serialization with str conversion for complex objects
+            return json.dumps(obj, default=str, ensure_ascii=False)
+    
+    def _json_deserialize(self, json_str: str) -> Any:
+        """
+        Deserialize JSON with improved error handling.
+        
+        Args:
+            json_str: JSON string to deserialize
+            
+        Returns:
+            Deserialized object or None if deserialization fails
+        """
+        try:
+            return json.loads(json_str)
+        except Exception as e:
+            logger.error(f"JSON deserialization failed: {e}")
+            # Try to sanitize the JSON string
+            try:
+                # Replace problematic escape sequences
+                sanitized = json_str.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+                return json.loads(sanitized)
+            except Exception as e2:
+                logger.error(f"Sanitized JSON deserialization also failed: {e2}")
                 return None
     
     def save_to_cache(self, query_params: Dict[str, Any], response_data: Any) -> bool:
@@ -182,9 +233,9 @@ class ArxivDBCacheManager:
         current_time = datetime.now()
         expiration_time = current_time + timedelta(days=self.ttl_days)
         
-        # Serialize the response data to JSON
+        # Serialize the response data with improved JSON handling
         try:
-            serialized_data = json.dumps(response_data)
+            serialized_data = self._json_serialize(response_data)
         except Exception as e:
             logger.warning(f"Failed to serialize response data: {e}")
             return False
