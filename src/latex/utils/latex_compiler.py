@@ -11,6 +11,15 @@ import logging
 import platform
 from typing import Dict, Any, Optional, List, Tuple
 
+try:
+    from src.config_loader import config_loader
+except ImportError:
+    # Handle case when running from different directory
+    import sys
+    import os.path
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+    from src.config_loader import config_loader
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,16 +37,33 @@ class LatexCompiler:
         
         Args:
             config: Optional configuration dictionary containing compiler options.
+                   If not provided, will use the global configuration from config.yaml.
         """
-        self.config = config or {}
-        # First try with the configured engine, then fall back to alternatives
+        # If no config provided, use the global config
+        if config is None:
+            latex_config = config_loader.get_latex_config()
+            self.config = latex_config
+        else:
+            self.config = config
+            
+        # Set up basic configuration
         self.latex_engine = self.config.get('latex_engine', 'pdflatex')
         self.bibtex_run = self.config.get('bibtex_run', True)
         self.latex_runs = self.config.get('latex_runs', 2)
         self.keep_intermediates = self.config.get('keep_intermediates', False)
         
+        # Get MiKTeX specific configuration
+        self.miktex_config = self.config.get('miktex', {})
+        self.custom_miktex_path = self.miktex_config.get('custom_path', '')
+        self.additional_search_paths = self.miktex_config.get('additional_search_paths', [])
+        
         # Check if the LaTeX engine is available, try alternatives if not
         self.latex_available, self.latex_engine = self._find_available_latex_engine()
+        
+        if self.latex_available:
+            logger.info(f"LaTeX compiler initialized successfully with engine: {self.latex_engine}")
+        else:
+            logger.warning(f"Failed to initialize LaTeX compiler. No LaTeX engine found.")
     
     def _find_available_latex_engine(self) -> Tuple[bool, str]:
         """
@@ -107,22 +133,56 @@ class LatexCompiler:
         # Get current username
         username = os.environ.get('USERNAME', '')
         
+        # Check custom MiKTeX path first if specified
+        if self.custom_miktex_path:
+            logger.info(f"Checking custom MiKTeX path: {self.custom_miktex_path}")
+            if os.path.exists(self.custom_miktex_path):
+                engine_path = os.path.join(self.custom_miktex_path, f"{engine}.exe")
+                if os.path.exists(engine_path) and os.path.isfile(engine_path):
+                    logger.info(f"Found LaTeX engine '{engine}' at custom path: {engine_path}")
+                    # Test if the engine works
+                    try:
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        result = subprocess.run(
+                            [engine_path, '--version'],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            startupinfo=startupinfo,
+                            check=False,
+                            text=True
+                        )
+                        if result.returncode == 0:
+                            version_info = result.stdout.strip().split('\n')[0] if result.stdout else "Unknown version"
+                            print(f"Successfully tested LaTeX engine: {version_info}")
+                            return engine_path
+                    except Exception as e:
+                        print(f"Error testing LaTeX engine at {engine_path}: {e}")
+                        return None
+            else:
+                logger.warning(f"Custom MiKTeX path doesn't exist: {self.custom_miktex_path}")
+                
         # Common MiKTeX installation paths
         common_paths = [
-            # User-specific MiKTeX installation (current layout)
+            # MiKTeX 25.x paths
+            f"C:\\Users\\{username}\\AppData\\Local\\Programs\\MiKTeX 25.3\\miktex\\bin\\x64",
+            f"C:\\Program Files\\MiKTeX 25.3\\miktex\\bin\\x64",
+            # Older MiKTeX paths
             f"C:\\Users\\{username}\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64",
-            # User-specific MiKTeX installation (older layout)
             f"C:\\Users\\{username}\\AppData\\Local\\MiKTeX\\miktex\\bin\\x64",
-            # System-wide MiKTeX installation
-            "C:\\Program Files\\MiKTeX\\miktex\\bin\\x64",
-            # Alternative system-wide MiKTeX installation
-            "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin",
-            # Common TeX Live installation paths
+            f"C:\\Program Files\\MiKTeX\\miktex\\bin\\x64",
+            f"C:\\Program Files (x86)\\MiKTeX\\miktex\\bin",
+            # TeX Live installation paths
             "C:\\texlive\\2023\\bin\\win32",
             "C:\\texlive\\2024\\bin\\win32",
             "C:\\texlive\\2023\\bin\\x64",
             "C:\\texlive\\2024\\bin\\x64"
         ]
+        
+        # Add any additional search paths from configuration
+        if self.additional_search_paths:
+            logger.info(f"Adding {len(self.additional_search_paths)} additional search paths from config")
+            common_paths.extend(self.additional_search_paths)
         
         # Check each path for the engine
         for base_path in common_paths:

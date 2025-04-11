@@ -168,7 +168,30 @@ def call_openai_with_retry(
                                                 return content_dict, default_model
                                             except json.JSONDecodeError as e:
                                                 logger.error(f"Failed to parse {default_model} JSON response: {e}. Content: {content}")
-                                                # Continue with returning the raw text
+                                                # Try to repair broken JSON
+                                                try:
+                                                    # Attempt basic JSON repair
+                                                    open_braces = content.count('{')
+                                                    close_braces = content.count('}')
+                                                    open_brackets = content.count('[')
+                                                    close_brackets = content.count(']')
+                                                    
+                                                    logger.debug(f"JSON balance: {open_braces}:{close_braces}, {open_brackets}:{close_brackets}")
+                                                    
+                                                    # Fix truncated JSON by adding missing braces
+                                                    if open_braces > close_braces:
+                                                        content += '}' * (open_braces - close_braces)
+                                                    if open_brackets > close_brackets:
+                                                        content += ']' * (open_brackets - close_brackets)
+                                                    
+                                                    # Try parsing again
+                                                    content_dict = json.loads(content)
+                                                    logger.info(f"Successfully repaired and parsed JSON from {default_model}")
+                                                    json_found = True
+                                                    return content_dict, default_model
+                                                except Exception as repair_e:
+                                                    logger.warning(f"JSON repair failed: {repair_e}")
+                                                    # Continue with returning the raw text
                                         
                                         # Return raw text if no JSON or not structured
                                         if not json_found:

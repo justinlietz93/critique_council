@@ -11,6 +11,16 @@ import logging
 import datetime
 from typing import Dict, Any, Optional, List, Union, Tuple
 
+# Import the global configuration loader
+try:
+    from src.config_loader import config_loader
+except ImportError:
+    # Handle case when running from different directory
+    import sys
+    import os.path
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+    from src.config_loader import config_loader
+
 from .config import LatexConfig
 from .converters import MarkdownToLatexConverter, MathFormatter
 from .processors import ContentProcessor, JargonProcessor, CitationProcessor
@@ -33,21 +43,39 @@ class LatexFormatter:
         
         Args:
             config: Optional configuration dictionary containing formatter options.
+                   If not provided, will use the global configuration from config.yaml.
         """
-        # Initialize configuration
-        self.config = LatexConfig(config)
+        # If no config provided, use the global config's latex section
+        if config is None:
+            latex_config = config_loader.get_latex_config()
+            # Convert to LatexConfig for backwards compatibility
+            self.config = LatexConfig(latex_config)
+            logger.info("Using global YAML configuration for LaTeX formatter")
+        else:
+            # Use provided config with LatexConfig for backwards compatibility
+            self.config = LatexConfig(config)
+            logger.info("Using provided configuration for LaTeX formatter")
+        
+        # Get main configuration parameters
+        scientific_mode = self.config.get('scientific_mode', False)
+        template_dir = self.config.get('template_dir')
+        output_dir = self.config.get('output_dir')
+        compile_pdf = self.config.get('compile_pdf', True)  # Default to True with new config
         
         # Select the appropriate template based on mode
-        if self.config.get('scientific_mode', False):
-            self.config.set('main_template', self.config.get('scientific_template'))
-            print(f"Using scientific methodology mode for LaTeX generation")
+        if scientific_mode:
+            template = self.config.get('scientific_template')
+            self.config.set('main_template', template)
+            logger.info(f"Using scientific methodology mode with template: {template}")
         else:
-            self.config.set('main_template', self.config.get('philosophical_template', 'academic_paper.tex'))
+            template = self.config.get('philosophical_template', 'academic_paper.tex')
+            self.config.set('main_template', template)
+            logger.info(f"Using philosophical mode with template: {template}")
         
         # Initialize file manager
         self.file_manager = FileManager({
-            'template_dir': self.config.get('template_dir'),
-            'output_dir': self.config.get('output_dir')
+            'template_dir': template_dir,
+            'output_dir': output_dir
         })
         
         # Initialize converters
@@ -65,18 +93,17 @@ class LatexFormatter:
         )
         
         self.citation_processor = CitationProcessor(
-            output_dir=self.config.get('output_dir')
+            output_dir=output_dir
         )
         
-        # Initialize LaTeX compiler if needed
-        if self.config.get('compile_pdf', False):
-            self.latex_compiler = LatexCompiler({
-                'latex_engine': self.config.get('latex_engine'),
-                'bibtex_run': self.config.get('bibtex_run'),
-                'latex_runs': self.config.get('latex_runs'),
-                'keep_intermediates': self.config.get('keep_intermediates')
-            })
+        # Initialize LaTeX compiler if needed - pass the whole config
+        # so that compiler can access MiKTeX specific settings
+        if compile_pdf:
+            logger.info("PDF compilation enabled, initializing LaTeX compiler")
+            # Use the global config directly to ensure all settings are available to compiler
+            self.latex_compiler = LatexCompiler(latex_config if config is None else config)
         else:
+            logger.info("PDF compilation disabled")
             self.latex_compiler = None
     
     def format_document(

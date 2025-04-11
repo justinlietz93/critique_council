@@ -48,6 +48,12 @@ DEFAULT_CONFIG = {
     "latex_args": ["-interaction=nonstopmode", "-halt-on-error"],
     "bibtex_run": True,
     "latex_runs": 2,  # Number of LaTeX compilation passes
+    
+    # MiKTeX configuration (Windows-specific)
+    "miktex": {
+        "custom_path": "",  # Custom path to MiKTeX installation
+        "additional_search_paths": []  # Additional paths to search for LaTeX executables
+    }
 }
 
 

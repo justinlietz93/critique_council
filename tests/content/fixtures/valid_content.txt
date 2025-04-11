@@ -1,0 +1,9 @@
+This is a sample valid content file for testing.
+
+It contains multiple paragraphs with distinct points that can be extracted:
+
+First, this document discusses the importance of testing.
+Second, it emphasizes the need for robust error handling.
+Third, it mentions the value of well-organized test structures.
+
+These points should be extractable by the content assessor.

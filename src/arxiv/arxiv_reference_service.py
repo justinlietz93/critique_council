@@ -7,10 +7,11 @@ acting as a facade for the various submodules that handle specific functions.
 
 import os
 import logging
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional, Set, Tuple, Union
 
 from .api_client import ArxivApiClient
 from .cache_manager import ArxivCacheManager
+from .db_cache_manager import ArxivDBCacheManager
 from .utils import TextProcessor
 from .bibtex_converter import BibTexConverter
 
@@ -29,16 +30,46 @@ class ArxivReferenceService:
     5. Cache results to avoid redundant API calls
     """
     
-    def __init__(self, cache_dir: Optional[str] = None):
+    def __init__(self, 
+                 cache_dir: Optional[str] = None, 
+                 use_db_cache: bool = True,
+                 cache_ttl_days: int = 30,
+                 config: Optional[Dict[str, Any]] = None):
         """
         Initialize the ArXiv reference service.
         
         Args:
             cache_dir: Directory to store cached results. Defaults to 'storage/arxiv_cache'.
+            use_db_cache: Whether to use the database cache manager. Defaults to True.
+            cache_ttl_days: Number of days before cached entries expire. Defaults to 30.
+            config: Additional configuration settings.
         """
+        # Extract config if provided
+        if config:
+            arxiv_config = config.get('arxiv', {})
+            cache_dir = arxiv_config.get('cache_dir', cache_dir)
+            use_db_cache = arxiv_config.get('use_db_cache', use_db_cache)
+            cache_ttl_days = arxiv_config.get('cache_ttl_days', cache_ttl_days)
+        
         # Initialize component services
         self.api_client = ArxivApiClient()
-        self.cache_manager = ArxivCacheManager(cache_dir)
+        
+        # Initialize the appropriate cache manager
+        if use_db_cache:
+            db_path = os.path.join(cache_dir or "storage/arxiv_cache", "arxiv_cache.db")
+            cleanup_interval = 24  # Default to daily cleanup
+            if config and 'arxiv' in config:
+                cleanup_interval = config['arxiv'].get('cache_cleanup_interval_hours', cleanup_interval)
+            
+            self.cache_manager = ArxivDBCacheManager(
+                db_path=db_path, 
+                ttl_days=cache_ttl_days,
+                cleanup_interval_hours=cleanup_interval
+            )
+            logger.info(f"ArXiv service using database cache at {db_path}")
+        else:
+            self.cache_manager = ArxivCacheManager(cache_dir)
+            logger.info(f"ArXiv service using file-based cache at {cache_dir or ArxivCacheManager.DEFAULT_CACHE_DIR}")
         
         # Reference pools - shared across all agents
         self.global_references: Dict[str, Dict[str, Any]] = {}  # id -> full metadata
@@ -352,9 +383,21 @@ class ArxivReferenceService:
         Clear the cache.
         
         Args:
-            older_than_days: If provided, only clear files older than this many days
+            older_than_days: If provided, only clear files or entries older than this many days
             
         Returns:
-            Number of cache files cleared
+            Number of cache files or entries cleared
         """
         return self.cache_manager.clear_cache(older_than_days)
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about the cache.
+        
+        Returns:
+            Dictionary with cache statistics, or empty dict if not supported
+        """
+        # Only the DB cache manager supports stats
+        if isinstance(self.cache_manager, ArxivDBCacheManager):
+            return self.cache_manager.get_stats()
+        return {}

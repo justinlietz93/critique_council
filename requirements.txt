@@ -3,3 +3,4 @@ requests
 python-dotenv
 aiohttp
 openai>=1.0.0
+pyyaml

@@ -10,6 +10,16 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Union, Tuple
 
+# Import the global configuration loader
+try:
+    from src.config_loader import config_loader
+except ImportError:
+    # Handle case when running from different directory
+    import sys
+    import os.path
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+    from src.config_loader import config_loader
+
 from .formatter import format_as_latex
 
 logger = logging.getLogger(__name__)
@@ -87,15 +97,22 @@ def handle_latex_output(
     
     logger.info("Generating LaTeX document from critique report")
     
-    # Set up the LaTeX configuration
-    config = {
+    # Get the base configuration from the YAML file
+    yaml_config = config_loader.get_latex_config()
+    
+    # Override settings with command-line arguments
+    # Command-line options override the YAML config
+    config = yaml_config.copy()
+    
+    # Update with command-line parameters
+    config.update({
         'output_dir': args.latex_output_dir,
         'compile_pdf': args.latex_compile,
         'scientific_objectivity_level': args.latex_scientific_level,
-        'include_bibliography': True,
-        'output_filename': 'critique_report',
-        'scientific_mode': scientific_mode  # Add the scientific_mode flag
-    }
+        'scientific_mode': scientific_mode
+    })
+    
+    logger.info(f"Using LaTeX compile_pdf setting: {config['compile_pdf']}")
     
     try:
         # Make sure the output directory exists
