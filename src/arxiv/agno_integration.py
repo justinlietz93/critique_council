@@ -11,18 +11,18 @@ import json
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 
+# Import basic Agno modules
 import agno
-from agno.knowledge import KnowledgeBase
-from agno.vectordb import lancedb 
-from agno.embedder import openai
-from agno.embedder import base as embedder_base
+from agno.document import Document
+from agno.models import embedding as embedding_module
+from agno.vectordb import vectordb
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 class ArxivAgnoStore:
     """
-    ArXiv paper storage and retrieval using Agno's knowledge base and vector search capabilities.
+    ArXiv paper storage and retrieval using Agno's vector search capabilities.
     
     This class integrates with Agno to provide:
     1. Efficient storage of ArXiv papers with embeddings
@@ -40,7 +40,6 @@ class ArxivAgnoStore:
                  cache_dir: Optional[str] = None,
                  table_name: Optional[str] = None,
                  ttl_days: int = DEFAULT_CACHE_TTL_DAYS,
-                 embedder: Optional[embedder_base.Embedder] = None,
                  openai_api_key: Optional[str] = None):
         """
         Initialize the ArXiv Agno integration.
@@ -49,8 +48,7 @@ class ArxivAgnoStore:
             cache_dir: Directory for storing the vector database
             table_name: Name of the table to store papers in
             ttl_days: Number of days to keep papers before considering them expired
-            embedder: Custom embedder to use (if None, will use OpenAI's embedder)
-            openai_api_key: OpenAI API key for the default embedder
+            openai_api_key: OpenAI API key for embeddings
         """
         self.cache_dir = cache_dir or self.DEFAULT_CACHE_DIR
         self.table_name = table_name or self.DEFAULT_TABLE_NAME
@@ -59,39 +57,38 @@ class ArxivAgnoStore:
         # Ensure cache directory exists
         os.makedirs(self.cache_dir, exist_ok=True)
         
-        # Set up embedder
-        if embedder is None:
-            # If no key is provided, it will look for the OPENAI_API_KEY environment variable
-            if openai_api_key:
-                os.environ["OPENAI_API_KEY"] = openai_api_key
-            self.embedder = openai.OpenAIEmbedder(id="text-embedding-3-small")
-        else:
-            self.embedder = embedder
+        # Set up OpenAI API key if provided
+        if openai_api_key:
+            os.environ["OPENAI_API_KEY"] = openai_api_key
+
+        # Initialize embedding model
+        # Try to use OpenAI embeddings if API key is available, otherwise use a simpler model
+        try:
+            self.embedder = embedding_module.OpenAIEmbedding("text-embedding-3-small")
+            logger.info("Using OpenAI embeddings")
+        except Exception as e:
+            logger.warning(f"Failed to initialize OpenAI embedding: {e}")
+            logger.info("Falling back to simpler embedding model")
+            self.embedder = embedding_module.SimpleEmbedding()
         
-        # Set up vector database
-        self.vector_db = lancedb.LanceDb(
-            uri=self.cache_dir,
-            table_name=self.table_name,
-            search_type=lancedb.SearchType.hybrid,  # Use hybrid search by default for better results
-            embedder=self.embedder,
-        )
-        
-        # Create knowledge base
-        self.knowledge_base = KnowledgeBase(
-            vector_db=self.vector_db,
+        # Initialize vector database
+        self.vector_db = vectordb.VectorDB(
+            name=self.table_name,
+            embedding_model=self.embedder,
+            persist_directory=self.cache_dir
         )
         
         logger.info(f"ArXiv Agno integration initialized with cache at {self.cache_dir}")
     
-    def _prepare_paper_document(self, paper: Dict[str, Any]) -> Dict[str, Any]:
+    def _prepare_paper_document(self, paper: Dict[str, Any]) -> Document:
         """
-        Prepare a paper for storage in the knowledge base.
+        Prepare a paper for storage as an Agno Document.
         
         Args:
             paper: Paper metadata dictionary
             
         Returns:
-            Document dictionary for the knowledge base
+            Agno Document object
         """
         # Extract key information
         paper_id = paper.get('id', '')
@@ -100,23 +97,35 @@ class ArxivAgnoStore:
         authors = ', '.join([author.get('name', '') for author in paper.get('authors', [])])
         published = paper.get('published', '')
         
-        # Create document
-        document = {
+        # Calculate expiration date
+        expiration = (datetime.now() + timedelta(days=self.ttl_days)).isoformat()
+        
+        # Create full text content
+        content = f"Title: {title}\nAuthors: {authors}\nPublished: {published}\nSummary: {summary}"
+        
+        # Store full metadata in metadata field
+        metadata = {
             "id": paper_id,
             "title": title,
             "summary": summary,
             "authors": authors,
             "published": published,
-            "metadata": json.dumps(paper),  # Store full metadata as JSON
-            "expiration": (datetime.now() + timedelta(days=self.ttl_days)).isoformat(),
-            "text": f"Title: {title}\nAuthors: {authors}\nPublished: {published}\nSummary: {summary}",
+            "expiration": expiration,
+            "metadata": json.dumps(paper)  # Store full metadata as JSON
         }
+        
+        # Create document
+        document = Document(
+            id=paper_id,
+            content=content,
+            metadata=metadata
+        )
         
         return document
     
     def add_papers(self, papers: List[Dict[str, Any]]) -> int:
         """
-        Add multiple papers to the knowledge base.
+        Add multiple papers to the vector database.
         
         Args:
             papers: List of paper metadata dictionaries
@@ -130,13 +139,13 @@ class ArxivAgnoStore:
         # Prepare documents
         documents = [self._prepare_paper_document(paper) for paper in papers]
         
-        # Add to knowledge base
+        # Add to vector database
         try:
-            self.knowledge_base.add_documents(documents)
-            logger.info(f"Added {len(documents)} papers to knowledge base")
+            self.vector_db.add_documents(documents)
+            logger.info(f"Added {len(documents)} papers to vector database")
             return len(documents)
         except Exception as e:
-            logger.error(f"Error adding papers to knowledge base: {e}")
+            logger.error(f"Error adding papers to vector database: {e}")
             return 0
     
     def search(self, 
@@ -155,27 +164,38 @@ class ArxivAgnoStore:
             List of relevant paper metadata dictionaries
         """
         try:
-            # Search knowledge base
-            results = self.knowledge_base.search(
+            # Search vector database
+            results = self.vector_db.search(
                 query=query,
-                limit=max_results,
-                min_score=min_score,
+                top_k=max_results,
+                score_threshold=min_score
             )
             
             # Extract and parse metadata
             papers = []
             for result in results:
-                if "metadata" in result:
-                    try:
-                        metadata = json.loads(result["metadata"])
-                        papers.append(metadata)
-                    except json.JSONDecodeError:
-                        logger.warning(f"Failed to parse metadata for result: {result.get('id', 'unknown')}")
+                try:
+                    # Get full metadata from the metadata JSON
+                    metadata_json = result.metadata.get("metadata")
+                    if metadata_json:
+                        paper = json.loads(metadata_json)
+                        papers.append(paper)
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse metadata for result: {result.id}")
+                    # Fallback to the basic metadata
+                    paper = {
+                        "id": result.metadata.get("id", ""),
+                        "title": result.metadata.get("title", ""),
+                        "summary": result.metadata.get("summary", ""),
+                        "authors": [{"name": name.strip()} for name in result.metadata.get("authors", "").split(",") if name.strip()],
+                        "published": result.metadata.get("published", "")
+                    }
+                    papers.append(paper)
             
             logger.info(f"Found {len(papers)} papers matching query: {query}")
             return papers
         except Exception as e:
-            logger.error(f"Error searching knowledge base: {e}")
+            logger.error(f"Error searching vector database: {e}")
             return []
     
     def get_paper(self, paper_id: str) -> Optional[Dict[str, Any]]:
@@ -189,50 +209,57 @@ class ArxivAgnoStore:
             Paper metadata dictionary if found, None otherwise
         """
         try:
-            # Query by ID
-            results = self.knowledge_base.search(
-                query=f"id:{paper_id}",
-                limit=1,
-            )
-            
-            # Extract and parse metadata
-            if results and "metadata" in results[0]:
-                try:
-                    return json.loads(results[0]["metadata"])
-                except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse metadata for paper: {paper_id}")
-            
-            return None
+            # Get document by ID
+            document = self.vector_db.get_document(paper_id)
+            if not document:
+                return None
+                
+            # Extract full metadata
+            try:
+                metadata_json = document.metadata.get("metadata")
+                if metadata_json:
+                    return json.loads(metadata_json)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse metadata for paper: {paper_id}")
+                
+            # Fallback to basic metadata
+            return {
+                "id": document.metadata.get("id", ""),
+                "title": document.metadata.get("title", ""),
+                "summary": document.metadata.get("summary", ""),
+                "authors": [{"name": name.strip()} for name in document.metadata.get("authors", "").split(",") if name.strip()],
+                "published": document.metadata.get("published", "")
+            }
         except Exception as e:
             logger.error(f"Error retrieving paper: {e}")
             return None
     
     def clear(self) -> bool:
         """
-        Clear all papers from the knowledge base.
+        Clear all papers from the vector database.
         
         Returns:
             True if successful, False otherwise
         """
         try:
-            # Remove and recreate the knowledge base
-            self.knowledge_base.clear()
-            logger.info("Cleared knowledge base")
+            # Clear the vector database
+            self.vector_db.clear()
+            logger.info("Cleared vector database")
             return True
         except Exception as e:
-            logger.error(f"Error clearing knowledge base: {e}")
+            logger.error(f"Error clearing vector database: {e}")
             return False
     
     def get_stats(self) -> Dict[str, Any]:
         """
-        Get statistics about the knowledge base.
+        Get statistics about the vector database.
         
         Returns:
-            Dictionary with knowledge base statistics
+            Dictionary with vector database statistics
         """
         try:
             # Get document count
-            doc_count = self.knowledge_base.count()
+            doc_count = self.vector_db.count()
             
             return {
                 "document_count": doc_count,
@@ -241,7 +268,7 @@ class ArxivAgnoStore:
                 "ttl_days": self.ttl_days,
             }
         except Exception as e:
-            logger.error(f"Error getting knowledge base stats: {e}")
+            logger.error(f"Error getting vector database stats: {e}")
             return {
                 "error": str(e),
                 "cache_dir": self.cache_dir,

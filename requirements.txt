@@ -4,3 +4,4 @@ python-dotenv
 aiohttp
 openai>=1.0.0
 pyyaml
+numpy>=2.2.4
