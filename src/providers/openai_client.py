@@ -20,8 +20,7 @@ def call_openai_with_retry(
     context: Dict[str, Any],
     config: Dict[str, Any],
     is_structured: bool = False,
-    system_message: Optional[str] = None,
-    max_tokens: Optional[int] = None
+    **kwargs
 ) -> Tuple[Union[str, Dict[str, Any]], str]:
     """
     Calls OpenAI API with the given prompt template and context.
@@ -38,17 +37,24 @@ def call_openai_with_retry(
     Returns:
         Tuple of (response content, model used)
     """
-    # Extract configuration
-    api_config = config.get('api', {}).get('openai', {})
-    default_model = api_config.get('model', 'o1') # Use o1 as default model
-    api_key = api_config.get('resolved_key') or os.getenv('OPENAI_API_KEY')
+    # Extract configuration - check both direct and nested paths
+    api_config = config.get('api', {})
+    openai_config = api_config.get('openai', {})
+    
+    # Handle system message from either kwargs or config
+    system_message = kwargs.get('system_message') or openai_config.get('system_message')
+    max_tokens = kwargs.get('max_tokens') or openai_config.get('max_tokens')
+    
+    # Get model and API key
+    default_model = openai_config.get('model', 'o1')  # Use o1 as default model
+    api_key = openai_config.get('resolved_key') or os.getenv('OPENAI_API_KEY')
     
     if not api_key:
         raise ModelCallError("OpenAI API key not found in configuration or environment")
     
     # Configure retries
-    max_retries = api_config.get('retries', 3)
-    retry_delay_base = api_config.get('retry_delay_base', 2)
+    max_retries = openai_config.get('retries', 3)
+    retry_delay_base = openai_config.get('retry_delay_base', 2)
     
     # Create OpenAI client
     client = OpenAI(api_key=api_key)

@@ -11,9 +11,8 @@ import json
 import os
 from typing import Dict, List, Any, Optional, Tuple
 
-# Import LLM clients
-from .providers import gemini_client # For backward compatibility
-from .providers import openai_client # For PR mode
+# Import provider factory for LLM clients
+from .providers import call_with_retry
 
 # Import the peer review enhancement text
 from .reasoning_agent import PEER_REVIEW_ENHANCEMENT
@@ -92,25 +91,13 @@ def generate_judge_summary_and_score(original_content: str, adjusted_trees: List
             final_judge_prompt += PEER_REVIEW_ENHANCEMENT
             judge_logger.info("Peer Review enhancement applied to judge prompt.")
 
-        # Determine which provider to use based on config
-        primary_provider = config.get('api', {}).get('primary_provider', 'gemini')
-        
-        if primary_provider == 'openai' and 'openai' in config.get('api', {}).get('providers', {}):
-            # Use OpenAI if it's the primary provider
-            judge_result, model_used = openai_client.call_openai_with_retry(
-                prompt_template=final_judge_prompt,
-                context=context,
-                config=config,
-                is_structured=True
-            )
-        else:
-            # Default to Gemini for backward compatibility
-            judge_result, model_used = gemini_client.call_gemini_with_retry(
-                prompt_template=final_judge_prompt,
-                context=context,
-                config=config,
-                is_structured=True
-            )
+        # Use the provider factory to call the appropriate LLM based on config
+        judge_result, model_used = call_with_retry(
+            prompt_template=final_judge_prompt,
+            context=context,
+            config=config,
+            is_structured=True
+        )
 
         if isinstance(judge_result, dict) and all(k in judge_result for k in ['judge_summary_text', 'judge_overall_score', 'judge_score_justification']):
             summary = judge_result['judge_summary_text'].strip()

@@ -10,8 +10,8 @@ import logging
 import json
 from typing import Dict, Any, Optional
 
-# Import OpenAI client
-from .providers import openai_client
+# Import provider factory for LLM clients
+from .providers import call_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -88,21 +88,36 @@ def format_scientific_peer_review(
     """
     
     try:
-        # Call OpenAI to generate the formatted peer review
-        # Get max tokens from config if available
-        max_tokens = config.get("api", {}).get("openai", {}).get("max_tokens")
+        # Create a new config that forces OpenAI to be the provider
+        # This ensures we use OpenAI for this specific formatting task which is better suited for it
+        formatter_config = {
+            "api": {
+                **config.get("api", {}),
+                "primary_provider": "openai"  # Force OpenAI for scientific formatting
+            }
+        }
         
-        # Optional args dictionary to avoid hardcoding parameters
-        optional_args = {}
-        if max_tokens:
-            optional_args["max_tokens"] = max_tokens
+        # Make sure we have formatting-specific settings for OpenAI
+        if "openai" not in formatter_config["api"]:
+            # If no OpenAI config, try to use nested providers structure
+            if "providers" in formatter_config["api"] and "openai" in formatter_config["api"]["providers"]:
+                formatter_config["api"]["openai"] = formatter_config["api"]["providers"]["openai"]
+                
+        # Attempt to set system message in OpenAI config
+        if "openai" in formatter_config["api"]:
+            formatter_config["api"]["openai"]["system_message"] = system_message
+            
+            # Get max tokens from config if available and set in OpenAI config
+            max_tokens = config.get("api", {}).get("openai", {}).get("max_tokens")
+            if max_tokens:
+                formatter_config["api"]["openai"]["max_tokens"] = max_tokens
         
-        review_content, model_used = openai_client.call_openai_with_retry(
+        # Call provider factory with OpenAI set as primary provider
+        review_content, model_used = call_with_retry(
             prompt_template=prompt,
             context={},  # Context is already embedded in the prompt template
-            config=config,
-            system_message=system_message,
-            **optional_args
+            config=formatter_config,
+            is_structured=False
         )
         
         logger.info(f"Scientific peer review formatting completed using {model_used}")

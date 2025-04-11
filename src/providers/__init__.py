@@ -107,7 +107,8 @@ def call_with_retry(
     prompt_template: str,
     context: Dict[str, Any],
     config: Dict[str, Any],
-    is_structured: bool = False
+    is_structured: bool = False,
+    **kwargs
 ) -> Tuple[Union[Dict[str, Any], str], str]:
     """
     Universal function to call the appropriate LLM provider based on configuration.
@@ -141,11 +142,13 @@ def call_with_retry(
         else:
             return provider_module.generate_content(full_prompt, normalized_config)
     elif provider_name == "openai":
+        # Pass through any additional kwargs for OpenAI-specific parameters
         return provider_module.call_openai_with_retry(
             prompt_template=prompt_template,
             context=context,
             config=normalized_config,
-            is_structured=is_structured
+            is_structured=is_structured,
+            **kwargs
         )
     else:
         raise ValueError(f"Provider '{provider_name}' has no implementation in call_with_retry")
