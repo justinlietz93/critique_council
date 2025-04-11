@@ -79,23 +79,56 @@ def call_openai_with_retry(
         {"role": "user", "content": formatted_prompt}
     ]
     
-    # Prepare model parameters
-    model_params = {
-        "model": default_model,
-        "messages": messages,
-        "temperature": api_config.get('temperature', 0.2),
-    }
+    # Determine if we're using an o1 model which requires a completely different API endpoint
+    is_o1_model = 'o1' in default_model.lower()
     
-    # Handle token limits based on model 
-    if max_tokens:
-        # O1 models use max_completion_tokens instead of max_tokens
-        if 'o1' in default_model.lower():
-            model_params["max_completion_tokens"] = max_tokens
-        else:
+    if is_o1_model:
+        # o1 models use the responses.create API with a completely different structure
+        o1_params = {
+            "model": default_model,
+            # Prepend system message to formatted prompt for o1 models since they don't have a separate system message parameter
+            "input": [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": f"System instruction: {system_message}\n\nUser message: {formatted_prompt}"
+                        }
+                    ]
+                }
+            ],
+            "text": {
+                "format": {
+                    "type": "json_object" if is_structured else "text"
+                }
+            },
+            "reasoning": {
+                "effort": openai_config.get('reasoning_effort', "high")
+            },
+            "tools": [],
+            "store": True
+        }
+        
+        # Add max_tokens if specified
+        if max_tokens:
+            o1_params["max_output_tokens"] = max_tokens
+
+        model_params = o1_params
+    else:
+        # Standard chat completion parameters for non-o1 models
+        model_params = {
+            "model": default_model,
+            "messages": messages,
+        }
+        
+        # Add parameters for non-O1 models
+        model_params["temperature"] = openai_config.get('temperature', 0.2)
+        if max_tokens:
             model_params["max_tokens"] = max_tokens
-    
-    if is_structured:
-        model_params["response_format"] = {"type": "json_object"}
+        
+        if is_structured:
+            model_params["response_format"] = {"type": "json_object"}
     
     # Implement retry logic
     retry_count = 0
@@ -105,19 +138,47 @@ def call_openai_with_retry(
         try:
             logger.debug(f"Calling OpenAI API with model {default_model} (attempt {retry_count + 1})")
             
-            # Make the API call
-            response = client.chat.completions.create(**model_params)
-            
-            # Extract content
-            content = response.choices[0].message.content
-            
-            # Parse JSON if structured
-            if is_structured and content:
-                try:
-                    content_dict = json.loads(content)
-                    return content_dict, default_model
-                except json.JSONDecodeError as e:
-                    raise ModelCallError(f"Failed to parse JSON response: {e}")
+            # Make the API call - different endpoint for o1 models
+            if is_o1_model:
+                logger.debug(f"Using responses.create API for o1 model with params: {model_params}")
+                response = client.responses.create(**model_params)
+                
+                # Extract content from o1 response format
+                if hasattr(response, 'output') and hasattr(response.output, 'content'):
+                    content = response.output.content
+                else:
+                    # Handle unexpected response structure
+                    logger.error(f"Unexpected o1 response structure: {response}")
+                    raise ModelCallError(f"Unexpected o1 response structure: {response}")
+                
+                # Parse JSON if structured
+                if is_structured and content:
+                    try:
+                        content_dict = json.loads(content)
+                        return content_dict, default_model
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse o1 JSON response: {e}. Content: {content}")
+                        raise ModelCallError(f"Failed to parse o1 JSON response: {e}")
+            else:
+                logger.debug(f"Using Chat Completions API endpoint with params: {model_params}")
+                response = client.chat.completions.create(**model_params)
+                
+                # Extract content from standard completion response
+                if hasattr(response, 'choices') and len(response.choices) > 0 and hasattr(response.choices[0], 'message'):
+                    content = response.choices[0].message.content
+                else:
+                    # Handle unexpected response structure
+                    logger.error(f"Unexpected Chat API response structure: {response}")
+                    raise ModelCallError(f"Unexpected Chat API response structure: {response}")
+                
+                # Parse JSON if structured
+                if is_structured and content:
+                    try:
+                        content_dict = json.loads(content)
+                        return content_dict, default_model
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse Chat API JSON response: {e}. Content: {content}")
+                        raise ModelCallError(f"Failed to parse Chat API JSON response: {e}")
             
             return content, default_model
             
