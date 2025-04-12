@@ -1,4 +1,4 @@
-<h1 align="center">Cogito: Augmented Research with AI</h1>
+<h1 align="center">Cogito: AI Augmented Research</h1>
 
 <p align="center">
   <img src="src/assets/icon-black.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
