@@ -1,0 +1,46 @@
+2025-04-11 19:01:46,748 - agent.ContentAssessor - INFO - Extracting objective points from content
+2025-04-11 19:03:04,425 - agent.ContentAssessor - INFO - Successfully extracted points using o3-mini
+2025-04-11 19:03:04,425 - agent.ContentAssessor - WARNING - Standard JSON parsing failed: Unterminated string starting at: line 73 column 16 (char 4344)
+2025-04-11 19:03:04,425 - agent.ContentAssessor - DEBUG - Braces balance: 19:19, Brackets balance: 3:3
+2025-04-11 19:03:04,425 - agent.ContentAssessor - WARNING - JSON repair attempt failed: Unterminated string starting at: line 73 column 16 (char 4344)
+2025-04-11 19:03:04,425 - agent.ContentAssessor - WARNING - Could not parse result as JSON: Unterminated string starting at: line 73 column 16 (char 4344)
+2025-04-11 19:03:04,426 - agent.ContentAssessor - WARNING - Received string result, attempting to extract points
+2025-04-11 19:03:04,426 - agent.ContentAssessor - INFO - Found 17 points using pattern: "id":\s*"point-?(\d+)",\s*"point":\s*"([^"]+)"
+2025-04-11 19:03:04,428 - agent.ContentAssessor - INFO - ArXiv reference service initialized with cache dir: storage/arxiv_cache
+2025-04-11 19:03:04,428 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-1
+2025-04-11 19:03:05,086 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-1
+2025-04-11 19:03:05,086 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-2
+2025-04-11 19:03:10,030 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-2
+2025-04-11 19:03:10,030 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-3
+2025-04-11 19:03:11,321 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-3
+2025-04-11 19:03:11,321 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-4
+2025-04-11 19:03:14,044 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-4
+2025-04-11 19:03:14,044 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-5
+2025-04-11 19:03:16,843 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-5
+2025-04-11 19:03:16,843 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-6
+2025-04-11 19:03:21,236 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-6
+2025-04-11 19:03:21,236 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-7
+2025-04-11 19:03:22,991 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-7
+2025-04-11 19:03:22,991 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-8
+2025-04-11 19:03:26,025 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-8
+2025-04-11 19:03:26,025 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-9
+2025-04-11 19:03:28,892 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-9
+2025-04-11 19:03:28,892 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-10
+2025-04-11 19:03:31,903 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-10
+2025-04-11 19:03:31,908 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-11
+2025-04-11 19:03:35,314 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-11
+2025-04-11 19:03:35,314 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-12
+2025-04-11 19:03:38,021 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-12
+2025-04-11 19:03:38,021 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-13
+2025-04-11 19:03:42,659 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-13
+2025-04-11 19:03:42,659 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-14
+2025-04-11 19:03:43,971 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-14
+2025-04-11 19:03:43,971 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-15
+2025-04-11 19:03:47,519 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-15
+2025-04-11 19:03:47,519 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-16
+2025-04-11 19:03:50,381 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-16
+2025-04-11 19:03:50,381 - agent.ContentAssessor - DEBUG - Searching ArXiv references for point: point-17
+2025-04-11 19:03:52,885 - agent.ContentAssessor - DEBUG - Attached 3 references to point point-17
+2025-04-11 19:03:52,889 - agent.ContentAssessor - INFO - Updated LaTeX bibliography with ArXiv references at latex_output\critique_report_bibliography.bib
+2025-04-11 19:03:52,889 - agent.ContentAssessor - INFO - ArXiv reference attachment complete. Added references to 17/17 points.
+2025-04-11 19:03:52,890 - agent.ContentAssessor - INFO - Extracted 17 points from content

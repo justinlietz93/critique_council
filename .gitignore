@@ -3,7 +3,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-*.log
+
 *.tsbuildinfo
 
 # Python
@@ -46,10 +46,10 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-logs/
+
 *.mo
 *.pot
-*.log
+
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
