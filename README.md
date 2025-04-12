@@ -193,8 +193,8 @@ graph TD
         
         subgraph "Foundation Model Layer"
             CL[Claude API]
-            GP[GPT-4 API]
-            DS[DeepSeek]
+            GP[o3-mini API]
+            DS[Gemini 2.5 Pro]
         end
         
         subgraph "Document Processing Layer"
