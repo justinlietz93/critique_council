@@ -98,6 +98,5 @@ STANDARDS_REPOSITORY
 file_stash/*
 
 # Output files
-latex_output/*
 storage/
 storage/arxiv_cache/
