@@ -18,6 +18,7 @@
   <a href="#what-is-cogito">Overview</a> |
   <a href="#how-to-use-cogito">Usage</a> |
   <a href="#technical-foundation">Technology</a> |
+  <a href="#system-architecture">Architecture</a> |
   <a href="#realistic-expectations">Limitations</a> |
   <a href="#getting-started">Get Started</a>
 </p>
@@ -135,15 +136,178 @@ Starting with just a simple concept or hypothesis, Cogito meticulously researche
 
 ## Technical Foundation
 
-Cogito builds on several advanced technologies to achieve its capabilities:
+Cogito builds on several pioneering technologies to achieve its transformative capabilities:
 
 - **Large Language Models**: Leverages state-of-the-art LLMs from Anthropic (Claude) and OpenAI (GPT-4) orchestrated in a multi-agent architecture
 - **ArXiv Integration**: Direct access to over 2 million scholarly articles across scientific disciplines through the ArXiv API
-- **Agno Knowledge Base**: Sophisticated vector database technology for semantic understanding of research
-- **Multi-Agent Architecture**: Specialized AI agents with distinct perspectives and analytical frameworks
+- **Hierarchical Reasoning Generator**: Revolutionary approach to AI planning and reasoning that transcends traditional flat reasoning patterns by decomposing complex cognitive tasks into a hierarchical Phase → Task → Step structure ([GitHub](https://github.com/justinlietz93/hierarchical_reasoning_generator))
+- **Dynamic Persona Attribution**: Breakthrough technology for generating domain-specialized AI personas that adapt to complex knowledge domains, integrating philosophical frameworks with scientific expertise ([GitHub](https://github.com/justinlietz93/hierarchical_reasoning_generator/tree/main/hierarchical_planner/persona_builder))
+- **Council of Critics**: Pioneering multi-agent architecture that evolved into the current Critique Council, providing the foundational framework for multi-perspective evaluation
+- **Recursive Chain of Thought (RCoT)**: Advanced reasoning mechanism enabling iterative refinement within agents, creating a continuous self-learning loop for ever-improving performance ([GitHub](https://github.com/justinlietz93/RCoT))
+- **Agno Knowledge Base**: Sophisticated vector database technology for semantic understanding of research (to be replaced with Neuroca)
+- **Neuroca**: Next-generation biologically-inspired NeuroCognitive Architecture implementing tiered memory, health dynamics (energy, focus), and simulated neurological processes for more human-like reasoning ([GitHub](https://github.com/Modern-Prometheus-AI/Neuroca))
 - **Vector-Based Search**: Advanced semantic search using high-dimensional vector embeddings (with both OpenAI and local fallback options)
 - **Self-Critique Mechanisms**: Recursive evaluation and improvement processes
 - **Academic Standard Enforcement**: Rigorous validation against established scientific norms
+
+## System Architecture
+
+The Cogito platform is built on a sophisticated, modular architecture that integrates multiple advanced AI technologies:
+
+```mermaid
+graph TD
+    subgraph "Cogito Platform"
+        subgraph "Multi-Agent Orchestration Layer"
+            RCoT[Recursive Chain of Thought]
+            HRG[Hierarchical Reasoning Generator]
+            DPA[Dynamic Persona Attribution]
+            
+            subgraph "Critique Council"
+                CoC[Council of Critics Foundation]
+                PA[Philosophical Agents]
+                SA[Scientific Methodology Agents]
+                EA[Expert Arbiter]
+            end
+            
+            subgraph "Syncretic Catalyst"
+                RS[Research Synthesis]
+                LS[Literature Search]
+                TG[Thesis Generation]
+                AC[Academic Content Production]
+            end
+        end
+        
+        subgraph "Knowledge Integration Layer"
+            AI[ArXiv Integration]
+            
+            subgraph "Vector Knowledge Store"
+                AG[Agno Vector Database]
+                NC[Neuroca Cognitive Architecture]
+                style NC stroke-dasharray: 5 5
+            end
+            
+            VS[Vector Search Engine]
+        end
+        
+        subgraph "Foundation Model Layer"
+            CL[Claude API]
+            GP[GPT-4 API]
+            DS[DeepSeek]
+        end
+        
+        subgraph "Document Processing Layer"
+            LX[LaTeX Generation]
+            PDF[PDF Compilation]
+            BB[BibTeX Management]
+        end
+    end
+    
+    %% Orchestration Layer Connections
+    RCoT --> PA
+    RCoT --> SA
+    RCoT --> RS
+    HRG --> CoC
+    HRG --> RS
+    DPA --> PA
+    DPA --> SA
+    
+    %% Critique Council Connections
+    CoC --> PA
+    CoC --> SA
+    PA --> EA
+    SA --> EA
+    
+    %% Syncretic Catalyst Connections
+    LS --> RS
+    RS --> TG
+    TG --> AC
+    
+    %% Knowledge Layer Connections
+    AI --> AG
+    AG <--> VS
+    VS --> RS
+    VS --> LS
+    
+    %% Agno → Neuroca Transition
+    AG -. "Planned Migration" .-> NC
+    
+    %% Foundation Model Connections
+    CL --> PA
+    CL --> SA
+    CL --> RS
+    GP --> PA
+    GP --> SA
+    GP --> RS
+    DS --> RS
+    
+    %% Document Processing Connections
+    AC --> LX
+    LX --> PDF
+    BB --> LX
+    
+    classDef current fill:#0e7490,stroke:#0369a1,color:white
+    classDef planned fill:#b45309,stroke:#92400e,color:white,stroke-dasharray: 5 5
+    classDef default fill:#1e293b,stroke:#475569,color:white
+    class AG,RCoT,HRG,DPA,CoC current
+    class NC planned
+```
+
+### Key Architectural Components
+
+#### 1. Hierarchical Reasoning Generator
+
+The Hierarchical Reasoning Generator represents a fundamental shift in how AI systems organize complex cognitive tasks, mirroring human expert problem-solving patterns. This groundbreaking approach:
+
+- Transcends traditional flat reasoning by decomposing high-level goals into a structured Phase → Task → Step hierarchy
+- Enables truly scalable reasoning across arbitrary complexity levels
+- Creates both top-down strategic thinking and bottom-up tactical execution
+- Forms the cognitive backbone for both the Critique Council and Syncretic Catalyst subsystems
+
+The hierarchical structure provides Cogito with the unique ability to approach research problems at multiple levels of abstraction simultaneously - from broad disciplinary frameworks down to specific methodological details.
+
+#### 2. Dynamic Persona Attribution
+
+This revolutionary advancement in contextual AI adaptation transforms generic LLMs into domain-specialized expert personas:
+
+- Generates sophisticated academic personas with appropriate credentials and domain specialization
+- Dynamically adapts reasoning frameworks based on both philosophical tradition and scientific domain
+- Creates coherent, consistent expert perspectives for more nuanced multi-agent debate
+- Ensures that critiques and research contributions maintain appropriate academic voice and expertise
+
+The persona system enables each agent to maintain a consistent intellectual framework while specializing in the specific domain required by the research task.
+
+#### 3. Recursive Chain of Thought (RCoT)
+
+The RCoT architecture enables a powerful form of self-improving AI reasoning:
+
+- Implements iterative refinement loops within each reasoning agent
+- Orchestrates multiple specialized AI agents working in parallel
+- Aggregates results via sophisticated consensus mechanisms
+- Incorporates robust self-learning through continuous performance evaluation and adjustment
+
+This creates a continuous improvement cycle, where each agent not only contributes to the research process but also evolves its own capabilities through structured self-critique.
+
+#### 4. Council of Critics to Critique Council Evolution
+
+The original Council of Critics provided the conceptual foundation that evolved into the current Critique Council:
+
+- Pioneered the multi-perspective critical analysis approach
+- Established the philosophical foundation for rigorous intellectual evaluation
+- Introduced the concept of confidence-weighted critique aggregation
+- Evolved into the more sophisticated arbitration-based system in the current implementation
+
+This evolution represents the development of increasingly sophisticated multi-agent debate and consensus systems.
+
+#### 5. Neuroca (Future Agno Replacement)
+
+The planned migration from Agno to Neuroca will introduce a biologically-inspired NeuroCognitive Architecture that:
+
+- Implements tiered memory systems mirroring human cognitive processes
+- Introduces dynamic health systems (energy, focus) for more realistic cognitive resource management
+- Simulates neurological processes for more human-like reasoning and adaptability
+- Provides more sophisticated knowledge representation and retrieval mechanisms
+
+This advancement will significantly enhance Cogito's ability to maintain complex research context and make more nuanced connections between disparate concepts.
 
 ## Vector Search Details
 
@@ -239,7 +403,8 @@ We're actively developing the following enhancements for upcoming releases:
 - **Custom Knowledge Bases**: Support for organization-specific or private research repositories
 
 ### Architecture Improvements
-- **Reduced API Dependencies**: More capabilities with fully local operation
+- **Full Neuroca Integration**: Complete migration from Agno to the Neuroca cognitive architecture
+- **Enhanced RCoT Implementation**: Further development of recursive reasoning capabilities
 - **Distributed Processing**: Support for handling very large research projects
 - **Collaborative Workflows**: Multi-user research environments with shared knowledge
 - **API Interface**: Programmatic access for integration with other research tools
@@ -296,6 +461,7 @@ python src/syncretic_catalyst/thesis_builder.py "Quantum computation applied to 
 - [Example Outputs](examples/)
 - [Configuration Guide](docs/configuration.md)
 - [API Reference](docs/api_reference.md)
+- [Cogito Knowledge Base](https://notebooklm.google.com/notebook/55d7ef7a-e0e7-4e83-99de-2ee0106c822e) - Send an email to jlietz93@gmail.com to gain private access to the NotebookLM knowledgebase where you can ask questions directly about the repository and technologies
 
 ## License
 
