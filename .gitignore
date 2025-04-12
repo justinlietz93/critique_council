@@ -47,7 +47,6 @@ coverage.xml
 .pytest_cache/
 cover/
 logs/
-critiques/*
 *.mo
 *.pot
 *.log
