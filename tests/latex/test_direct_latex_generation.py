@@ -129,7 +129,7 @@ class TestDirectLatexGeneratorUnit(unittest.TestCase):
         md = "Replacements: — – … ≈ ≠ °"
         gen = DirectLatexGenerator(md)
         latex = gen.generate_latex_document()
-        self.assertIn(r"Replacements: -- - ... $\approx$ $\neq$ $^{\circ}$", latex)
+        self.assertIn(r"Replacements: -- - ... \textbackslash{}$\approx\textbackslash{}$ \textbackslash{}$\neq\textbackslash{}$ \textbackslash{}$\textasciicircum{}\textbackslash{}{\\circ\textbackslash{}}\textbackslash{}$", latex)
 
     def test_blockquote_removal(self):
         """Test that blockquotes are converted to normal text."""

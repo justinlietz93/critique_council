@@ -166,31 +166,49 @@ class DirectLatexGenerator:
         """
         processed_lines: List[str] = []
         in_itemize = False
+        list_depth = 0
+        in_code_block = False
         lines = self.raw_content.splitlines()
 
         for i, line in enumerate(lines):
-            is_list_item = line.strip().startswith('* ')
+            stripped_line = line.strip()
+            is_list_item = stripped_line.startswith('* ') or stripped_line.startswith('- ')
+
+            # Check for code block fences
+            if stripped_line == '```':
+                if not in_code_block:
+                    processed_lines.append("\\begin{verbatim}")
+                    in_code_block = True
+                else:
+                    processed_lines.append("\\end{verbatim}")
+                    in_code_block = False
+                continue  # Skip the fence line
+
             processed_line = self._process_line(line)
 
-            # Manage itemize environment
-            if is_list_item and not in_itemize:
-                processed_lines.append("\\begin{itemize}")
-                in_itemize = True
-            elif not is_list_item and in_itemize:
-                processed_lines.append("\\end{itemize}")
-                in_itemize = False
+            if in_code_block:
+                processed_lines.append(processed_line)
+                continue
 
-            # Format list items
+            # Manage itemize/enumerate environment with depth tracking
             if is_list_item:
-                 # Extract item text after '* ' and process it
-                 item_text = self._process_line(line.strip()[2:])
-                 processed_lines.append(f"  \\item {item_text}")
-            elif processed_line: # Add non-empty, non-list lines
-                 processed_lines.append(processed_line)
-            elif not line.strip() and i > 0 and lines[i-1].strip():
-                 # Add paragraph break for blank lines unless previous was also blank
-                 processed_lines.append("\\par")
+                list_depth += 1
+                if list_depth == 1:
+                    processed_lines.append("\\begin{itemize}")
+                # Extract item text after '* ' or '- ' and process it
+                item_text = self._process_line(stripped_line[2:], )
+                processed_lines.append('  ' * (list_depth - 1) + f"\\item {item_text}")
+            else:
+                if list_depth > 0 and not is_list_item:
+                    while list_depth > 0:
+                        processed_lines.append('  ' * (list_depth - 1) + "\\end{itemize}")
+                        list_depth -= 1
 
+                if processed_line:  # Add non-empty, non-list lines
+                    processed_lines.append(processed_line)
+                elif not line.strip() and i > 0 and lines[i-1].strip():
+                    # Add paragraph break for blank lines unless previous was also blank
+                    processed_lines.append("\\par")
 
         # Close any remaining itemize environments
         while list_depth > 0:
@@ -204,9 +222,7 @@ class DirectLatexGenerator:
                 continue
             final_output.append(l)
 
-
         return '\n'.join(final_output)
-
 
     def generate_latex_document(self) -> str:
         """
