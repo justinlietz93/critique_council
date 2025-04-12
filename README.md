@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="src/assets/icon-black.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
-  <img src="src/assets/icon.svg#gh-dark-mode-only" alt="Cogito Logo" width="150" />
+  <img src="src/assets/icon.png#gh-dark-mode-only" alt="Cogito Logo" width="150" />
 </p>
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
