@@ -1,12 +1,14 @@
-# Cogito: Revolutionizing Research with AI
+<h1 align="center">Cogito: Revolutionizing Research with AI</h1>
 
 <p align="center">
   <img src="src/assets/icon-black.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
   <img src="src/assets/icon.png#gh-dark-mode-only" alt="Cogito Logo" width="150" />
 </p>
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Release](https://img.shields.io/badge/release-v2.0-green)
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+  <img src="https://img.shields.io/badge/release-v2.0-green" alt="Release" />
+</p>
 
 <p align="center">
   <em>A breakthrough AI research platform that dramatically accelerates knowledge synthesis, critique, and discovery.</em>
