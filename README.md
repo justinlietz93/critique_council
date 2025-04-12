@@ -26,7 +26,7 @@
 <h2 align="center">What is Cogito?</h2>
 
 <p align="center">
-  Cogito is a powerful AI research platform that provides rigorous assistance in the scholarly process across disciplines. It fundamentally transforms how research can be conducted by combining advanced multi-agent AI systems with direct access to scientific literature through ArXiv integration and the Agno knowledge base. Cogito doesn't just summarize or organize existing knowledge—it <strong>performs real research</strong> by autonomously searching, retrieving, and analyzing primary scientific literature across the ArXiv database of over 2 million scholarly articles.
+  Cogito is a powerful AI research platform that provides rigorous assistance in the scholarly process across disciplines. A leap above mainstream deep-research frameworks. It fundamentally transforms how research can be conducted by combining advanced multi-agent AI systems with direct access to scientific literature through ArXiv integration and the Agno knowledge base. Cogito doesn't just summarize or organize existing knowledge—it <strong>performs real research</strong> by autonomously searching, retrieving, and analyzing primary scientific literature across the ArXiv database of over 2 million scholarly articles.
 </p>
 
 <p align="center">
