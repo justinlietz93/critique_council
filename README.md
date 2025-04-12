@@ -1,214 +1,294 @@
-# Reasoning Council Critique Module
+# Cogito: Revolutionizing Research with AI
 
-## Purpose
+<p align="center">
+  <img src="src/assets/icon-dark.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
+  <img src="src/assets/icon-light.svg#gh-dark-mode-only" alt="Cogito Logo" width="150" />
+</p>
 
-This Python module provides a framework for critiquing text documents using a simulated "Reasoning Council." The council consists of multiple asynchronous agents, each embodying the philosophical principles of a specific thinker (Aristotle, Descartes, Kant, Leibniz, Popper, Russell). These agents analyze the input text using an underlying Large Language Model (LLM), engage in self-critique based on peer assessments, and produce a synthesized, objective assessment highlighting potential areas for improvement.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Release](https://img.shields.io/badge/release-v2.0-green)
 
-## Structure
+<p align="center">
+  <em>A breakthrough AI research platform that dramatically accelerates knowledge synthesis, critique, and discovery.</em>
+</p>
 
-*   **`src/`**: Contains the core module code.
-    *   **`main.py`**: Main asynchronous entry point function `critique_goal_document(file_path, config)`.
-    *   **`input_reader.py`**: Handles reading the input text file.
-    *   **`council_orchestrator.py`**: Manages the asynchronous council workflow, including agent instantiation, critique rounds (initial + self-critique), and synthesis.
-    *   **`reasoning_agent.py`**: Defines the base `ReasoningAgent` and concrete `PhilosopherAgent` classes which load detailed directives from the `prompts/` directory.
-    *   **`reasoning_tree.py`**: Implements the recursive critique generation logic, making calls to the configured LLM client.
-    *   **`output_formatter.py`**: Formats the final synthesized critique into an objective report string.
-    *   **`providers/`**: Contains LLM client implementations.
-        *   **`gemini_client.py`**: Client for Google Gemini API, including retry logic and structured output handling.
-        *   **`deepseek_v3_client.py`**: Client for DeepSeek API, used as a fallback for Gemini rate limits.
-        *   **`openai_client.py`**: Client for OpenAI API, used for scientific peer review formatting in PR mode.
-        *   **`exceptions.py`**: Custom exceptions for provider interactions.
-    *   **`scientific_review_formatter.py`**: Formats critique reports into formal scientific peer review documents when PR mode is active.
-    *   **`__init__.py`**: Makes the module importable and exposes the main function.
-*   **`prompts/`**: Contains enhanced (V2.0) text files defining the detailed philosophical directives for each agent.
-*   **`tests/`**: Contains unit, integration, and end-to-end tests using `pytest`.
-*   **`docs/`**: Contains requirements, design, and test log documentation.
-*   **`config.json`**: Central configuration file for model parameters, thresholds, etc.
-*   **`.env`**: (Recommended) File to store sensitive API keys (see Configuration).
-*   **`.gitignore`**: Standard Python gitignore file.
-*   **`.editorconfig`**: Defines basic editor settings.
-*   **`README.md`**: This file.
-*   Standard policy files (`LICENSE`, `CODE_OF_CONDUCT.md`, etc.)
+<p align="center">
+  <a href="#what-is-cogito">Overview</a> |
+  <a href="#how-to-use-cogito">Usage</a> |
+  <a href="#technical-foundation">Technology</a> |
+  <a href="#realistic-expectations">Limitations</a> |
+  <a href="#getting-started">Get Started</a>
+</p>
 
-## Configuration
+## What is Cogito?
 
-The module uses a combination of `config.json` for general settings and `.env` for sensitive API keys. The `run_critique.py` script loads both and passes a combined configuration dictionary to the core module.
+Cogito is a revolutionary AI research platform that dramatically accelerates the scholarly process across disciplines. It fundamentally transforms how research is conducted by combining advanced multi-agent AI systems with direct access to scientific literature through ArXiv integration and the Agno knowledge base. Cogito doesn't just summarize or organize existing knowledge—it **performs real research** by autonomously searching, retrieving, and analyzing primary scientific literature across the ArXiv database of over 2 million scholarly articles.
 
-**1. `config.json`:**
-   - Located in the project root.
-   - Defines parameters like LLM model names, API retries, temperature, reasoning tree depth, confidence thresholds, etc.
-   - You can modify these values to tune the critique process.
+Unlike conventional research tools that simply help organize or search through existing information, Cogito actively **participates in the intellectual process** - analyzing concepts across historical and contemporary literature, identifying methodological approaches, developing mathematical formalizations, evaluating empirical evidence, and synthesizing novel insights. Each agent in the system ruthlessly critiques not only the subject matter but also its own work and the work of other agents, pursuing truth with unwavering intellectual rigor.
 
-**2. `.env` File (for API Keys):**
-   - Create this file in the project root (it's ignored by git).
-   - Store sensitive API keys here:
+<!-- Research Acceleration Diagram - Will be added in future update -->
 
-```dotenv
-# .env file
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
-DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY_HERE # Optional, for fallback
-OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE # Required for PR mode
-```
+## Why Cogito Transforms Research
 
-You would then need a mechanism (e.g., using `python-dotenv` in your calling script) to load these variables and construct the configuration dictionary passed to the module. The `gemini_client` looks for `config['api']['resolved_key']` for the Gemini key and `config['deepseek']['api_key']` for the DeepSeek key.
+### The Truth-Seeking Engine
 
-## Usage
+At its core, Cogito is designed to pursue truth with relentless determination:
 
-The easiest way to run the Critique Council is using the provided `run_critique.py` script:
+- **Real Scientific Research**: Directly accesses and analyzes millions of primary research papers from ArXiv
+- **Self-Critiquing Agents**: Each agent continuously evaluates and improves its own outputs
+- **Peer Verification**: Multiple specialized agents verify each other's work from different perspectives
+- **Evidence-Based Reasoning**: Every claim must be supported by empirical evidence or rigorous logical derivation
+- **Meticulous Standard Enforcement**: The system demands academic excellence at every step of the process
+
+### 10x Acceleration of Scientific Workflows
+
+Traditional academic research requires months of literature review, critical analysis, and scholarly writing. Cogito compresses this timeline dramatically:
+
+- **Literature Synthesis**: Analyze hundreds of relevant papers across decades of research in minutes instead of months
+- **Critical Evaluation**: Apply rigorous philosophical and scientific frameworks automatically  
+- **Gap Identification**: Discover overlooked research opportunities across disciplinary boundaries
+- **Novel Connection Discovery**: Identify non-obvious links between disparate research domains
+- **Complete Publications**: Generate formal academic documents with proper citations, methodologies, and evidence
+
+### Dual System Architecture
+
+Cogito consists of two complementary systems powered by state-of-the-art AI that work together to both critique existing knowledge and synthesize new insights:
+
+#### 1. Critique Council
+
+A multi-agent AI system that subjects concepts to ruthlessly rigorous intellectual evaluation:
+
+- **Philosophical Analysis**: Applies the analytical frameworks of major philosophical traditions (Aristotle, Descartes, Kant, Leibniz, Popper, Russell)
+- **Scientific Peer Review**: Conducts domain-specific scientific evaluation with academic rigor
+- **Arbitration Process**: Resolves contradictions and assigns confidence scores to different critiques
+- **Publication-Quality Output**: Produces comprehensive critique reports and formal peer reviews
+
+#### 2. Syncretic Catalyst
+
+A research synthesis engine that constructs new academic knowledge:
+
+- **Vector-Powered Literature Discovery**: Finds semantically relevant work across ArXiv's repository using advanced vector embeddings
+- **Multi-Agent Research Team**: Specialized research agents explore different dimensions of a concept:
+  - **Historical Development**: Uncovers foundational and overlooked historical research
+  - **Modern Research Landscape**: Analyzes cutting-edge developments and current gaps 
+  - **Methodological Approaches**: Develops rigorous validation techniques
+  - **Mathematical Formalization**: Creates formal representations and models
+  - **Empirical Evidence**: Gathers and evaluates supporting evidence
+  - **Interdisciplinary Connections**: Identifies cross-domain applications
+  - **Implications & Applications**: Explores broader impact and future directions
+- **Comprehensive Thesis Construction**: Synthesizes a cohesive academic thesis with proper citations
+
+## What Makes Cogito Unique
+
+### True Research vs. Summarization
+
+Unlike typical AI tools that merely summarize or paraphrase information from their training data, Cogito:
+
+1. **Directly accesses primary scientific literature** through ArXiv integration and the Agno knowledge library
+2. **Retrieves and analyzes specific papers** relevant to the research question
+3. **Verifies information against original sources** rather than relying on pre-trained knowledge
+4. **Enforces academic standards** through rigorous self-critique and peer verification
+5. **Pursues methodological excellence** by challenging its own assumptions and conclusions
+
+This approach produces genuinely novel insights backed by real scientific evidence, not mere recombinations of pre-existing knowledge.
+
+### Comparison with Other Research Tools
+
+| Capability | Traditional Research Tools | Large Language Models | **Cogito** |
+|------------|----------------------------|----------------------|------------|
+| Literature Search | Limited keyword search | Broad but limited to training data | **Semantic vector search across historical and modern papers** |
+| Multi-Perspective Analysis | Manual consultation of different viewpoints | Single perspective with limited depth | **Specialized agents with distinct philosophical and scientific perspectives** |
+| Critical Evaluation | Manual, subjective | Simplistic, without methodological rigor | **Structured critique with recursive reasoning and arbitration** |
+| Academic Rigor | Dependent on researcher | Variable quality, hallucinations | **Formal academic standards with proper citation and evidence** |
+| Novel Insights | Limited by researcher's knowledge | Primarily recombination of existing knowledge | **Identification of unexplored areas and novel connections across domains** |
+| Mathematical Formalization | Manual development | Limited capability | **Sophisticated formalization with appropriate notation and proofs** |
+| Output Format | Requires manual formatting | Basic formatting | **Publication-ready academic papers and formal peer reviews** |
+
+### Example: AI-Generated Academic Peer Review
+
+Cogito produces formal peer reviews indistinguishable from those written by human academics—but backed by comprehensive literature review of actual scientific papers. These reviews include:
+
+- Credentials and expertise relevant to the subject matter
+- Comprehensive analysis of methodological rigor
+- Evaluation of theoretical foundations and empirical evidence
+- Specific, actionable recommendations for improvement
+- Proper academic tone and formatting
+
+### Example: Comprehensive Thesis Development
+
+Starting with just a simple concept or hypothesis, Cogito meticulously researches and develops academic work by:
+
+1. Retrieving and analyzing actual papers from ArXiv spanning decades of relevant research
+2. Mapping the intellectual landscape to identify genuine research gaps and opportunities
+3. Developing appropriate methodological approaches and rigorous mathematical formalizations
+4. Gathering and critically evaluating empirical evidence from primary sources
+5. Constructing a comprehensive academic thesis with proper citations to real scientific literature
+6. Generating publication-ready documents that meet the highest academic standards
+
+## Technical Foundation
+
+Cogito builds on several advanced technologies to achieve its capabilities:
+
+- **Large Language Models**: Leverages state-of-the-art LLMs from Anthropic (Claude) and OpenAI (GPT-4) orchestrated in a multi-agent architecture
+- **ArXiv Integration**: Direct access to over 2 million scholarly articles across scientific disciplines through the ArXiv API
+- **Agno Knowledge Base**: Sophisticated vector database technology for semantic understanding of research
+- **Multi-Agent Architecture**: Specialized AI agents with distinct perspectives and analytical frameworks
+- **Vector-Based Search**: Advanced semantic search using high-dimensional vector embeddings (with both OpenAI and local fallback options)
+- **Self-Critique Mechanisms**: Recursive evaluation and improvement processes
+- **Academic Standard Enforcement**: Rigorous validation against established scientific norms
+
+## Vector Search Details
+
+The semantic search capabilities work as follows:
+
+- **Pre-indexed Corpus**: ArXiv papers are indexed on-demand through the ArXiv API, with results cached locally
+- **Vector Database**: Papers are converted to vector embeddings (using OpenAI embeddings when available, with local fallback)
+- **Semantic Matching**: Search uses cosine similarity between content vectors and paper vectors
+- **Dynamic Discovery**: New papers are discovered during research and automatically added to the local vector database
+- **Flexible Configuration**: Can work entirely offline with local embedding generation if API keys aren't available 
+
+## How to Use Cogito
+
+Cogito offers multiple ways to accelerate your research with truth-seeking rigor:
+
+### For Critical Analysis
 
 ```bash
-# Run with standard philosophical critique
-python run_critique.py content.txt
+# Generate a comprehensive philosophical and scientific critique
+python run_critique.py your_document.txt --scientific
 
-# Run with peer review mode (see below)
-python run_critique.py content.txt --PR
+# Produce a formal academic peer review
+python run_critique.py your_document.txt --scientific --PR
+
+# Generate publication-ready LaTeX output
+python run_critique.py your_document.txt --scientific --PR --latex
 ```
 
-For programmatic usage:
+### For Research Synthesis
 
-```python
-# Example programmatic usage
-import os
-from dotenv import load_dotenv # Requires 'pip install python-dotenv'
-from src import critique_goal_document
-
-def main():
-    load_dotenv() # Load variables from .env file
-
-    # --- Configuration ---
-    # Construct the config dict expected by the module
-    # Ensure API keys are loaded securely (e.g., from environment variables)
-    config = {
-        'api': {
-            'resolved_key': os.getenv('GEMINI_API_KEY'),
-            'retries': 3,
-            'model_name': 'gemini-1.5-flash', # Example model
-            'temperature': 0.6,
-            # Add other Gemini parameters if needed (top_p, top_k, max_output_tokens)
-            'openai': {
-                'resolved_key': os.getenv('OPENAI_API_KEY'), # Required for PR mode
-                'model': 'gpt-4-turbo-preview',
-                'temperature': 0.2
-            }
-        },
-        'deepseek': { # Optional fallback configuration
-            'api_key': os.getenv('DEEPSEEK_API_KEY'),
-            # 'base_url': 'https://api.deepseek.com/v1' # Default
-        }
-        # Add other config sections if needed by other components
-    }
-
-    # Check if essential config is present
-    if not config.get('api', {}).get('resolved_key'):
-        print("Error: GEMINI_API_KEY not found. Please set it in the .env file or environment.")
-        return
-
-    # Assumes 'content.txt' is in the 'critique_council' directory
-    input_file = 'content.txt'
-    
-    # Enable peer review mode (optional)
-    peer_review = True
-
-    print(f"Initiating critique for: {input_file}")
-    try:
-        # Call the synchronous main function (with optional peer review flag)
-        final_critique_report = critique_goal_document(input_file, config, peer_review=peer_review)
-        print("\n--- Critique Report ---")
-        print(final_critique_report)
-        print("--- End of Report ---")
-    except FileNotFoundError:
-        print(f"Error: Input file not found at {input_file}")
-    except Exception as e:
-        print(f"An error occurred during critique: {e}")
-
-if __name__ == "__main__":
-    main()
-```
-
-**Direct Execution (Limited):**
-Running `python -m src.main` provides a basic demonstration but uses dummy configuration and may not fully exercise the LLM integration without modification.
-
-## Peer Review Mode
-
-The Critique Council now supports a "Peer Review" mode, which enhances the philosophical critique with domain-specific scientific expertise. When enabled with the `--PR` flag:
-
-1. All philosophical critics, the arbiter, and the judge gain academic credentials and domain-specific expertise relevant to the input content
-2. The critics evaluate the content from both their philosophical perspective and as scientific subject matter experts
-3. The system generates an additional formal scientific peer review document following academic publishing standards
-
-This mode is particularly useful for:
-- Academic papers and research content
-- Technical documentation that requires domain expertise 
-- Content where scientific accuracy is as important as philosophical coherence
-
-The peer review document includes:
-- A reviewer with relevant credentials (name, title, affiliation)
-- A brief summary of the work
-- A clear recommendation (accept/reject/revise)
-- Numbered major and minor concerns
-- Specific suggestions for improvement
-
-To use peer review mode:
 ```bash
-python run_critique.py content.txt --PR
+# Build a comprehensive thesis from a concept
+python src/syncretic_catalyst/thesis_builder.py "Your research concept or hypothesis"
+
+# Enhance an existing research project with semantic literature search
+python src/syncretic_catalyst/research_enhancer.py
 ```
 
-**Note:** Peer Review mode requires an OpenAI API key in your `.env` file for the final formatting stage.
+## What Cogito Produces
 
-## Dependencies
+### Critical Analysis Outputs
 
-*   Python 3.x (tested with 3.8+)
-*   `google-generativeai`: Google Gemini client library
-*   `openai>=1.0.0`: OpenAI API client (required for PR mode)
-*   `pytest`: For running tests
-*   `python-dotenv`: For loading configuration from `.env` files
-*   `requests`: HTTP client library
-*   `aiohttp`: Asynchronous HTTP client library
+- **Comprehensive Critique Reports**: Multi-perspective analysis with confidence scores
+- **Formal Peer Reviews**: Academic peer reviews following publication standards
+- **Publication-Ready Documents**: LaTeX and PDF outputs with proper formatting, citations, and structure
 
-Install dependencies:
+### Research Synthesis Outputs
+
+- **Comprehensive Academic Theses**: Complete research papers with proper citations
+- **Research Gap Analyses**: Identification of unexplored areas and opportunities
+- **Literature Maps**: Organized collections of relevant papers across time and disciplines
+- **Novel Connection Reports**: Analysis of cross-disciplinary applications
+
+## Realistic Expectations
+
+While Cogito significantly accelerates research workflows, it's important to understand:
+
+### What "Publication-Ready" Means
+
+- **Formatting**: Documents follow proper academic format with citations, sections, and LaTeX integration
+- **Content Quality**: High-quality academic writing that requires human review before submission
+- **Human Partnership**: Cogito is designed to enhance human researchers, not replace them
+
+### Current Limitations
+
+- **Domain Expertise**: While the system has broad knowledge, it cannot match the depth of specialized human experts in niche fields
+- **Novel Experiments**: Cogito can suggest experimental designs but cannot perform physical laboratory work
+- **Validation Requirements**: Output should be validated by human researchers before use in critical applications
+- **API Dependencies**: Full functionality requires API access to LLM providers (fallback mechanisms are available)
+- **ArXiv Scope**: Literature access is currently limited to papers available in the ArXiv repository
+
+## Known Issues
+
+The current version of Cogito has several known issues that we're actively working to address:
+
+- **LaTeX Compilation Environment**: Requires proper LaTeX installation with Perl for PDF generation
+- **API Rate Limiting**: Heavy usage may encounter rate limits with OpenAI and Anthropic APIs
+- **Memory Usage**: The vector database can consume significant memory with very large research projects
+- **Windows Path Handling**: Some Windows systems may require path adjustments for proper file access
+- **Long-Running Operations**: Complex research tasks may time out during extended processing
+- **Citation Formatting**: Certain non-standard citation formats may not render correctly
+
+Workarounds for these issues are documented in the [Troubleshooting Guide](docs/troubleshooting.md).
+
+## Future Enhancements Coming Soon
+
+We're actively developing the following enhancements for upcoming releases:
+
+### Expanding Research Capabilities
+- **Additional Scientific Databases**: Integration with PubMed, IEEE Xplore, and other scholarly repositories
+- **Improved Mathematical Reasoning**: Enhanced capabilities for complex mathematical derivation and proof
+- **Research Visualization Tools**: Interactive visualizations of research connections and knowledge graphs
+- **Custom Knowledge Bases**: Support for organization-specific or private research repositories
+
+### Architecture Improvements
+- **Reduced API Dependencies**: More capabilities with fully local operation
+- **Distributed Processing**: Support for handling very large research projects
+- **Collaborative Workflows**: Multi-user research environments with shared knowledge
+- **API Interface**: Programmatic access for integration with other research tools
+
+### Enhanced Output Options
+- **Interactive Document Formats**: HTML outputs with interactive elements and visualizations
+- **Presentation Generation**: Creation of research presentations and posters
+- **Domain-Specific Templates**: Specialized formats for different academic fields and journals
+- **Multilingual Support**: Research synthesis and critique in multiple languages
+
+## Integration with Research Workflows
+
+Cogito is designed to integrate with existing research processes:
+
+1. **Initial Exploration**: Use Cogito to rapidly explore research areas and identify promising directions
+2. **Literature Review Acceleration**: Let Cogito discover and synthesize relevant literature
+3. **Critical Evaluation**: Apply rigorous critique to existing work or preliminary ideas
+4. **Draft Generation**: Create structured academic drafts with proper citations
+5. **Human Refinement**: Review, validate, and refine the output
+6. **Iteration**: Update and enhance the work with additional Cogito-powered analysis
+
+This human-AI collaborative workflow maintains scientific integrity while dramatically increasing research velocity.
+
+## Getting Started
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/cogito.git
+cd cogito
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Set up API keys in .env file
+echo "ANTHROPIC_API_KEY=your_key_here" > .env
+echo "OPENAI_API_KEY=your_key_here" >> .env
 ```
 
-## Testing
-
-Unit, integration, and end-to-end tests are located in the `tests/` directory. Run tests using `pytest` from the `critique_council` directory:
+### Quick Start
 
 ```bash
-# Run from the 'critique_council' directory
-python -m pytest tests/ -v
+# Run a critique with scientific peer review
+python run_critique.py sample_content.txt --scientific --PR
+
+# Generate a thesis on quantum computing
+python src/syncretic_catalyst/thesis_builder.py "Quantum computation applied to climate modeling"
 ```
-*Note: Some tests might be skipped if external resources like `goal.txt` are missing.*
 
-## Documentation
+## Learn More
 
-*   **Requirements:** `docs/critique_module_requirements.md`
-*   **Design:** `docs/critique_module_design.md`
-*   **Test Log:** `docs/Critique_Module_Test_Log.md`
-*   **Philosopher Prompts:** `prompts/critique_*.txt` (Enhanced V2.0)
-*   **Arbiter Prompt:** `prompts/expert_arbiter.txt`
-*   **Judge Prompt:** `prompts/judge_summary.txt`
+- [Documentation](docs/)
+- [Example Outputs](examples/)
+- [Configuration Guide](docs/configuration.md)
+- [API Reference](docs/api_reference.md)
 
-## Output Reports
+## License
 
-The system generates the following outputs:
-
-### Standard Critique Report (`critiques/*_critique_*.md`)
-
-The detailed philosophical critique report saved in the `critiques/` directory, named using the input file and a timestamp (e.g., `critiques/content_critique_YYYYMMDD_HHMMSS.md`). The report includes:
-
-1.  **Overall Judge Summary:** An unbiased summary generated by an LLM synthesizing all critiques and arbiter feedback.
-2.  **Overall Scores & Metrics:** Includes the final **Judge Overall Score**, the **Expert Arbiter Score**, and counts of high/medium/low severity points identified post-arbitration.
-3.  **Expert Arbiter Adjustment Summary:** A list of all specific comments and confidence adjustments made by the Expert Arbiter agent to the philosopher critiques.
-4.  **Detailed Agent Critiques:** Separate sections for each philosopher agent, displaying their full critique tree (including sub-points, evidence, severity, and confidence adjusted by the arbiter) along with any specific arbitration comments applied directly to their points.
-
-### Peer Review Document (`critiques/*_peer_review_*.md`) (PR Mode Only)
-
-When running in Peer Review mode (`--PR` flag), the system also generates a formal scientific peer review document, saved as `critiques/content_peer_review_YYYYMMDD_HHMMSS.md`. This document follows academic publishing conventions and includes:
-
-1. **Reviewer Credentials:** Academic name, title, affiliation, and area of expertise.
-2. **Brief Summary:** Concise overview of the manuscript and its claims.
-3. **Recommendation:** Clear indication to accept, reject, or revise the work.
-4. **Major Concerns:** Numbered list of significant issues found in the work.
-5. **Minor Concerns:** Numbered list of smaller issues and suggestions.
-6. **Conclusion:** Final thoughts and synthesis.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
