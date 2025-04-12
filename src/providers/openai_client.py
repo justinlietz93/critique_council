@@ -1,8 +1,6 @@
-# src/providers/openai_client.py
-
 """
 Client interface for OpenAI API.
-Provides functions to call OpenAI models with retry logic.
+Provides functions to call OpenAI models with retry logic and high-level interface.
 """
 
 import logging
@@ -13,8 +11,14 @@ from typing import Dict, Any, Tuple, Optional, List, Union
 from openai import OpenAI
 from .exceptions import ModelCallError, MaxRetriesExceededError
 
+# Import the model configuration and decorators
+from .model_config import get_openai_config
+from .decorators import with_retry, with_error_handling, cache_result
+
 logger = logging.getLogger(__name__)
 
+@with_error_handling
+@with_retry(max_attempts=3, delay_base=2.0)
 def call_openai_with_retry(
     prompt_template: str,
     context: Dict[str, Any],
@@ -51,10 +55,6 @@ def call_openai_with_retry(
     
     if not api_key:
         raise ModelCallError("OpenAI API key not found in configuration or environment")
-    
-    # Configure retries
-    max_retries = openai_config.get('retries', 3)
-    retry_delay_base = openai_config.get('retry_delay_base', 2)
     
     # Create OpenAI client
     client = OpenAI(api_key=api_key)
@@ -130,140 +130,188 @@ def call_openai_with_retry(
         if is_structured:
             model_params["response_format"] = {"type": "json_object"}
     
-    # Implement retry logic
-    retry_count = 0
-    last_exception = None
+    logger.debug(f"Calling OpenAI API with model {default_model}")
     
-    while retry_count <= max_retries:
+    # Process O1 response or chat completion response based on model type
+    if is_response_api_model:
+        logger.debug(f"Using responses.create API for {default_model} model")
+        response = client.responses.create(**model_params)
+        
+        # Extract content from o1 response format which has a complex structure
         try:
-            logger.debug(f"Calling OpenAI API with model {default_model} (attempt {retry_count + 1})")
+            # More flexible approach - don't rely on specific indices
+            json_found = False
             
-            # Make the API call - different endpoint for o1 and o3-mini models
-            if is_response_api_model:
-                logger.debug(f"Using responses.create API for {default_model} model with params: {model_params}")
-                response = client.responses.create(**model_params)
-                
-                # Extract content from o1 response format which has a complex structure
-                try:
-                    # More flexible approach - don't rely on specific indices
-                    json_found = False
-                    
-                    if hasattr(response, 'output'):
-                        # Find the message component in the output list
-                        for output_item in response.output:
-                            if hasattr(output_item, 'content') and hasattr(output_item, 'role') and output_item.role == 'assistant':
-                                # Found the assistant's message
-                                for content_item in output_item.content:
-                                    if hasattr(content_item, 'text'):
-                                        content = content_item.text
-                                        logger.debug(f"Successfully extracted content from response API: {content[:100]}...")
-                                        
-                                        # Parse JSON if structured
-                                        if is_structured and content:
-                                            # The content often contains a JSON object
-                                            try:
-                                                content_dict = json.loads(content)
-                                                logger.debug(f"Successfully parsed JSON from {default_model} response")
-                                                json_found = True
-                                                return content_dict, default_model
-                                            except json.JSONDecodeError as e:
-                                                logger.error(f"Failed to parse {default_model} JSON response: {e}. Content: {content}")
-                                                # Try to repair broken JSON
-                                                try:
-                                                    # Attempt basic JSON repair
-                                                    open_braces = content.count('{')
-                                                    close_braces = content.count('}')
-                                                    open_brackets = content.count('[')
-                                                    close_brackets = content.count(']')
-                                                    
-                                                    logger.debug(f"JSON balance: {open_braces}:{close_braces}, {open_brackets}:{close_brackets}")
-                                                    
-                                                    # Fix truncated JSON by adding missing braces
-                                                    if open_braces > close_braces:
-                                                        content += '}' * (open_braces - close_braces)
-                                                    if open_brackets > close_brackets:
-                                                        content += ']' * (open_brackets - close_brackets)
-                                                    
-                                                    # Try parsing again
-                                                    content_dict = json.loads(content)
-                                                    logger.info(f"Successfully repaired and parsed JSON from {default_model}")
-                                                    json_found = True
-                                                    return content_dict, default_model
-                                                except Exception as repair_e:
-                                                    logger.warning(f"JSON repair failed: {repair_e}")
-                                                    # Continue with returning the raw text
-                                        
-                                        # Return raw text if no JSON or not structured
-                                        if not json_found:
-                                            return content, default_model
-                    
-                    # If we get here, try direct access to output fields based on error logs
-                    logger.warning("Couldn't find content with flexible approach, trying direct access...")
-                    if hasattr(response, 'output') and isinstance(response.output, list) and len(response.output) > 1:
-                        output_msg = response.output[1]  # Second item in output is the message
-                        
-                        if hasattr(output_msg, 'content') and isinstance(output_msg.content, list) and len(output_msg.content) > 0:
-                            output_text = output_msg.content[0]  # First item in content is the text
-                            
-                            if hasattr(output_text, 'text'):
-                                content = output_text.text
-                                logger.debug(f"Extracted content via direct access: {content[:100]}...")
+            if hasattr(response, 'output'):
+                # Find the message component in the output list
+                for output_item in response.output:
+                    if hasattr(output_item, 'content') and hasattr(output_item, 'role') and output_item.role == 'assistant':
+                        # Found the assistant's message
+                        for content_item in output_item.content:
+                            if hasattr(content_item, 'text'):
+                                content = content_item.text
+                                logger.debug(f"Successfully extracted content from response API: {content[:100]}...")
                                 
                                 # Parse JSON if structured
                                 if is_structured and content:
+                                    # The content often contains a JSON object
                                     try:
                                         content_dict = json.loads(content)
+                                        logger.debug(f"Successfully parsed JSON from {default_model} response")
+                                        json_found = True
                                         return content_dict, default_model
                                     except json.JSONDecodeError as e:
                                         logger.error(f"Failed to parse {default_model} JSON response: {e}. Content: {content}")
-                                        # Continue with returning the raw text
+                                        # Try to repair broken JSON
+                                        try:
+                                            # Attempt basic JSON repair
+                                            open_braces = content.count('{')
+                                            close_braces = content.count('}')
+                                            open_brackets = content.count('[')
+                                            close_brackets = content.count(']')
+                                            
+                                            logger.debug(f"JSON balance: {open_braces}:{close_braces}, {open_brackets}:{close_brackets}")
+                                            
+                                            # Fix truncated JSON by adding missing braces
+                                            if open_braces > close_braces:
+                                                content += '}' * (open_braces - close_braces)
+                                            if open_brackets > close_brackets:
+                                                content += ']' * (open_brackets - close_brackets)
+                                            
+                                            # Try parsing again
+                                            content_dict = json.loads(content)
+                                            logger.info(f"Successfully repaired and parsed JSON from {default_model}")
+                                            json_found = True
+                                            return content_dict, default_model
+                                        except Exception as repair_e:
+                                            logger.warning(f"JSON repair failed: {repair_e}")
+                                            # Continue with returning the raw text
                                 
-                                return content, default_model
-                    
-                    # If we get here, the structure didn't match expectations
-                    logger.error(f"Failed to extract content from {default_model} response: {response}")
-                    # Instead of raising an error, try to return the entire response as string to help debugging
-                    return str(response), default_model
-                    
-                except Exception as e:
-                    logger.error(f"Error processing {default_model} response: {e}. Response: {response}")
-                    raise ModelCallError(f"Error processing {default_model} response: {e}")
-            else:
-                logger.debug(f"Using Chat Completions API endpoint with params: {model_params}")
-                response = client.chat.completions.create(**model_params)
-                
-                # Extract content from standard completion response
-                if hasattr(response, 'choices') and len(response.choices) > 0 and hasattr(response.choices[0], 'message'):
-                    content = response.choices[0].message.content
-                else:
-                    # Handle unexpected response structure
-                    logger.error(f"Unexpected Chat API response structure: {response}")
-                    raise ModelCallError(f"Unexpected Chat API response structure: {response}")
-                
-                # Parse JSON if structured
-                if is_structured and content:
-                    try:
-                        content_dict = json.loads(content)
-                        return content_dict, default_model
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to parse Chat API JSON response: {e}. Content: {content}")
-                        raise ModelCallError(f"Failed to parse Chat API JSON response: {e}")
+                                # Return raw text if no JSON or not structured
+                                if not json_found:
+                                    return content, default_model
             
-            return content, default_model
+            # If we get here, try direct access to output fields based on error logs
+            logger.warning("Couldn't find content with flexible approach, trying direct access...")
+            if hasattr(response, 'output') and isinstance(response.output, list) and len(response.output) > 1:
+                output_msg = response.output[1]  # Second item in output is the message
+                
+                if hasattr(output_msg, 'content') and isinstance(output_msg.content, list) and len(output_msg.content) > 0:
+                    output_text = output_msg.content[0]  # First item in content is the text
+                    
+                    if hasattr(output_text, 'text'):
+                        content = output_text.text
+                        logger.debug(f"Extracted content via direct access: {content[:100]}...")
+                        
+                        # Parse JSON if structured
+                        if is_structured and content:
+                            try:
+                                content_dict = json.loads(content)
+                                return content_dict, default_model
+                            except json.JSONDecodeError as e:
+                                logger.error(f"Failed to parse {default_model} JSON response: {e}. Content: {content}")
+                                # Continue with returning the raw text
+                        
+                        return content, default_model
+            
+            # If we get here, the structure didn't match expectations
+            logger.error(f"Failed to extract content from {default_model} response: {response}")
+            # Instead of raising an error, try to return the entire response as string to help debugging
+            return str(response), default_model
             
         except Exception as e:
-            last_exception = e
-            retry_count += 1
-            
-            if retry_count <= max_retries:
-                delay = retry_delay_base ** retry_count
-                logger.warning(f"OpenAI API call failed, retrying in {delay}s: {e}")
-                time.sleep(delay)
-            else:
-                logger.error(f"OpenAI API call failed after {max_retries} retries: {e}")
-                break
-    
-    if last_exception:
-        raise MaxRetriesExceededError(f"Maximum retries exceeded: {last_exception}")
+            logger.error(f"Error processing {default_model} response: {e}. Response: {response}")
+            raise ModelCallError(f"Error processing {default_model} response: {e}")
     else:
-        raise ModelCallError("Unknown error occurred during OpenAI API call")
+        logger.debug(f"Using Chat Completions API endpoint with params")
+        response = client.chat.completions.create(**model_params)
+        
+        # Extract content from standard completion response
+        if hasattr(response, 'choices') and len(response.choices) > 0 and hasattr(response.choices[0], 'message'):
+            content = response.choices[0].message.content
+        else:
+            # Handle unexpected response structure
+            logger.error(f"Unexpected Chat API response structure: {response}")
+            raise ModelCallError(f"Unexpected Chat API response structure: {response}")
+        
+        # Parse JSON if structured
+        if is_structured and content:
+            try:
+                content_dict = json.loads(content)
+                return content_dict, default_model
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Chat API JSON response: {e}. Content: {content}")
+                raise ModelCallError(f"Failed to parse Chat API JSON response: {e}")
+    
+    return content, default_model
+
+
+def run_openai_client(
+    messages: List[Dict[str, str]],
+    model_name: Optional[str] = None,
+    max_tokens: Optional[int] = None,
+    temperature: Optional[float] = None
+) -> str:
+    """
+    High-level function to run the OpenAI client.
+    This is the main function to call from the AI client interface.
+    
+    Args:
+        messages: List of message objects
+        model_name: OpenAI model name (optional, will use config if not provided)
+        max_tokens: Maximum tokens (optional, will use config if not provided)
+        temperature: Temperature for generation (optional, will use config if not provided)
+        
+    Returns:
+        Generated response
+    """
+    try:
+        # Get config
+        config = get_openai_config()
+        
+        # Use provided values or get from config
+        model = model_name or config.get('model', 'o3-mini')
+        max_tokens_to_use = max_tokens or config.get('max_tokens', 8192)
+        temp_to_use = temperature if temperature is not None else config.get('temperature', 0.2)
+        
+        logger.info(f"Using OpenAI model: {model} with temperature: {temp_to_use}")
+        
+        # Extract system message and create user content
+        system_msg = None
+        user_content = ""
+        
+        for msg in messages:
+            if msg["role"] == "system":
+                system_msg = msg["content"]
+            elif msg["role"] == "user":
+                user_content += msg["content"] + "\n"
+        
+        # Create config for call_openai_with_retry
+        api_config = {
+            'api': {
+                'openai': {
+                    'model': model,
+                    'max_tokens': max_tokens_to_use,
+                    'temperature': temp_to_use,
+                    'system_message': system_msg
+                }
+            }
+        }
+        
+        # Call with retry logic
+        response, model_used = call_openai_with_retry(
+            prompt_template="{content}",
+            context={"content": user_content},
+            config=api_config,
+            is_structured=False
+        )
+        
+        logger.info(f"OpenAI response received from {model_used} - length: {len(response) if isinstance(response, str) else 'unknown'} characters")
+        return response
+        
+    except Exception as e:
+        error_msg = f"ERROR from OpenAI: {str(e)}"
+        logger.error(error_msg)
+        import traceback
+        traceback.print_exc()
+        return error_msg

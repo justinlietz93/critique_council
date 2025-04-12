@@ -64,6 +64,7 @@ The LaTeX functionality can be controlled via command-line arguments, which over
 - `--latex-compile`: Compile LaTeX document to PDF (requires LaTeX installation)
 - `--latex-output-dir`: Directory for LaTeX output files
 - `--latex-scientific-level`: Level of scientific objectivity (low, medium, high)
+- `--direct-latex`: Use simplified direct LaTeX generation for peer reviews (faster, less markdown support)
 
 Example:
 ```

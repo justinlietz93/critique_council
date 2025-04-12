@@ -541,7 +541,7 @@ The complete synthesized thesis can be found in `thesis_{research_id}.md`.
 
 
 def build_thesis(concept: str, 
-                model: str = "claude",
+                model: Optional[str] = None,
                 force_fallback: bool = False,
                 output_dir: str = "syncretic_output") -> None:
     """
@@ -549,26 +549,62 @@ def build_thesis(concept: str,
     
     Args:
         concept: The concept to research
-        model: AI model to use (claude or deepseek)
+        model: Optional AI model override (if None, uses configured primary_provider)
         force_fallback: Whether to force the fallback vector store implementation
         output_dir: Directory for output files
     """
     logger.info("Starting Syncretic Catalyst Thesis Builder")
     
-    # Initialize AI client
-    ai_client = None
+    # Initialize AI client using the orchestrator
     try:
-        if model.lower() == "claude":
-            from ai_clients import Claude37SonnetClient
-            logger.info("Using Claude 3.7 Sonnet for research...")
-            ai_client = Claude37SonnetClient()
-        elif model.lower() == "deepseek":
-            from ai_clients import DeepseekR1Client
-            logger.info("Using DeepSeek R1 for research...")
-            ai_client = DeepseekR1Client()
-        else:
-            logger.error(f"Error: Unsupported model '{model}'. Please use 'claude' or 'deepseek'.")
-            return
+        # Try import with different approaches
+        try:
+            # Try relative import first
+            from .ai_clients import AIOrchestrator
+            logger.info("Imported AIOrchestrator (relative import)")
+        except ImportError:
+            # Try absolute import
+            try:
+                from src.syncretic_catalyst.ai_clients import AIOrchestrator
+                logger.info("Imported AIOrchestrator (absolute import)")
+            except ImportError:
+                # Fall back to direct import
+                from ai_clients import AIOrchestrator
+                logger.info("Imported AIOrchestrator (direct import)")
+                
+        # Create the orchestrator with optional model override
+        orchestrator = AIOrchestrator(model_name=model)
+        
+        # Create a simple adapter that mimics the interface expected by our agents
+        class AIClientAdapter:
+            def __init__(self, orchestrator):
+                self.orchestrator = orchestrator
+                
+            def run(self, messages, max_tokens=4000):
+                # Extract system and user prompts
+                system_prompt = None
+                user_prompt = ""
+                
+                for msg in messages:
+                    if msg["role"] == "system":
+                        system_prompt = msg["content"]
+                    elif msg["role"] == "user":
+                        user_prompt += msg["content"]
+                
+                # Default system prompt if none provided
+                if not system_prompt:
+                    system_prompt = "You are a helpful research assistant."
+                
+                # Call the orchestrator
+                return self.orchestrator.call_llm(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_tokens=max_tokens
+                )
+        
+        # Create the adapter
+        ai_client = AIClientAdapter(orchestrator)
+        
     except ImportError:
         logger.error("Error: AI client libraries not found. Please ensure ai_clients.py is available.")
         return

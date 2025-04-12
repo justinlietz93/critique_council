@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (MiKTeX 25.3) (preloaded format=pdflatex 2025.4.11)  11 APR 2025 19:13
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (MiKTeX 25.3) (preloaded format=pdflatex 2025.4.11)  12 APR 2025 01:47
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**./critique_report_20250411_191348.tex
-(critique_report_20250411_191348.tex
+**./peer_review_report_20250412_014714.tex
+(peer_review_report_20250412_014714.tex
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
 (C:\Users\jliet\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
@@ -561,8 +561,8 @@ File: l3backend-pdftex.def 2024-05-08 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count339
 \l__pdf_internal_box=\box70
 )
-No file critique_report_20250411_191348.aux.
-\openout1 = `critique_report_20250411_191348.aux'.
+No file peer_review_report_20250412_014714.aux.
+\openout1 = `peer_review_report_20250412_014714.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 11.
 LaTeX Font Info:    ... okay on input line 11.
@@ -656,7 +656,7 @@ Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
 Package hyperref Info: Link coloring ON on input line 11.
 \@outlinefile=\write3
-\openout3 = `critique_report_20250411_191348.out'.
+\openout3 = `peer_review_report_20250412_014714.out'.
 
 LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 1
 5.
@@ -699,21 +699,44 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 15.
 (C:\Users\jliet\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-! You can't use `macro parameter character #' in horizontal mode.
-l.20 #
-      # Overall Judge Summary
-Sorry, but I'm not programmed to handle this case;
-I'll just pretend that you didn't ask for it.
-If you're in the wrong mode, you might be able to
-return to the right one by typing `I}' or `I$' or `I\par'.
+Overfull \hbox (288.3271pt too wide) in paragraph at lines 30--31
+\T1/lmr/m/n/12 across the neu-ral net-work. As out-lined in `How_It_Works/2_Cor
+e_Architecture_Components/2D_Unified_Knowledge_Graph.md`,
+ []
+
+
+Overfull \hbox (1.88145pt too wide) in paragraph at lines 34--36
+[]\T1/lmr/m/n/12 1. **Knowl-edge Graph Ef-fi-ciency**: How ef-fi-ciently in-for
+-ma-tion flows through
+ []
+
+
+
+[1
+
+{C:/Users/jliet/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users/jlie
+t/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc}]
+
+! LaTeX Error: Unicode character   (U+2003)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.71  
+        The definition and implementation of the M2 metric (Persistent B0 Co...
+
+You may provide a definition with
+\DeclareUnicodeCharacter 
 
  
 Here is how much of TeX's memory you used:
- 19221 strings out of 473523
- 362992 string characters out of 5714630
- 732663 words of memory out of 5000000
- 42232 multiletter control sequences out of 15000+600000
- 587170 words of font info for 59 fonts, out of 8000000 for 9000
+ 19304 strings out of 473523
+ 364797 string characters out of 5714630
+ 742672 words of memory out of 5000000
+ 42308 multiletter control sequences out of 15000+600000
+ 596181 words of font info for 62 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 80i,6n,83p,299b,541s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 80i,6n,83p,845b,1022s stack positions out of 10000i,1000n,20000p,200000b,200000s
 !  ==> Fatal error occurred, no output PDF file produced!

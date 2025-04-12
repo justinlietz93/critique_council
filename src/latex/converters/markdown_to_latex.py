@@ -39,6 +39,15 @@ class MarkdownToLatexConverter:
         print(f"Starting Markdown conversion. Content begins with: {repr(content[:50])}")
         latex_content = content
         
+        # Special handling for peer review credentials sections
+        try:
+            print("Processing peer review credentials")
+            latex_content = self._process_peer_review_credentials(latex_content)
+        except Exception as e:
+            print(f"Error in _process_peer_review_credentials: {e}")
+            # Continue with original content
+            pass
+        
         # Process the content in a specific order to avoid nested conversions
         
         # 1. Escape LaTeX special characters that aren't part of Markdown syntax
@@ -133,6 +142,30 @@ class MarkdownToLatexConverter:
         Returns:
             The processed content with headings converted.
         """
+        # Handle dividers commonly found in peer review documents
+        content = re.sub(
+            r'^-{5,}$',
+            r'\\hrulefill',
+            content,
+            flags=re.MULTILINE
+        )
+        
+        # Handle numbered sections like "1. Brief Summary of the Work" in peer reviews
+        content = re.sub(
+            r'^(\d+)\.\s+(.+?)$',
+            r'\\subsection{\2}',
+            content,
+            flags=re.MULTILINE
+        )
+        
+        # Handle "a. Sub-items" style in peer reviews (common in methodological analysis)
+        content = re.sub(
+            r'^([a-f])\.\s+(.+?)$',
+            r'\\subsubsection{\2}',
+            content,
+            flags=re.MULTILINE
+        )
+        
         # Handle ATX-style headings (# Heading)
         heading_patterns = [
             (r'^# (.+?)$', r'\\section{\1}'),
@@ -177,12 +210,12 @@ class MarkdownToLatexConverter:
         content = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', content)
         content = re.sub(r'__(.+?)__', r'\\textbf{\1}', content)
         
-        # Convert italic (* or _)
-        content = re.sub(r'\*([^*]+?)\*', r'\\textit{\1}', content)
-        content = re.sub(r'_([^_]+?)_', r'\\textit{\1}', content)
+        # Convert italic (* or _) - more careful to avoid matching * in math or lists
+        content = re.sub(r'(?<!\*)\*([^*\n]+?)\*(?!\*)', r'\\textit{\1}', content)
+        content = re.sub(r'(?<!_)_([^_\n]+?)_(?!_)', r'\\textit{\1}', content)
         
         # Convert inline code (`code`)
-        content = re.sub(r'`([^`]+?)`', r'\\texttt{\1}', content)
+        content = re.sub(r'`([^`\n]+?)`', r'\\texttt{\1}', content)
         
         return content
     
@@ -265,9 +298,66 @@ class MarkdownToLatexConverter:
         Returns:
             The processed content with horizontal rules converted.
         """
-        # Convert horizontal rules (---, ***, ___)
+        # Convert standard horizontal rules (---, ***, ___)
         hr_pattern = re.compile(r'^(?P<rule>[\*\-_]{3,})$', re.MULTILINE)
-        return hr_pattern.sub(r'\\hrulefill', content)
+        content = hr_pattern.sub(r'\\hrulefill', content)
+        
+        # Convert peer review style dividers with unicode characters
+        peer_divider_pattern = re.compile(r'^(?P<rule>─{3,})$', re.MULTILINE)
+        content = peer_divider_pattern.sub(r'\\hrulefill', content)
+        
+        return content
+    
+    def _process_peer_review_credentials(self, content: str) -> str:
+        """
+        Process peer review credentials sections at the top of peer review documents.
+        
+        This method handles formats like:
+        
+        Dr. Jonathan Smith, Ph.D.  
+        Department of Computer Science, Stanford University  
+        Area of Expertise: Topological Data Analysis, Graph Theory, and Computational Topology
+        
+        Args:
+            content: The content to process.
+            
+        Returns:
+            The processed content with peer review credentials formatted.
+        """
+        # Check if this is likely a peer review document
+        if "Peer Review" not in content and "peer review" not in content:
+            return content
+            
+        # Extract the title and credentials section
+        lines = content.split('\n')
+        in_credentials = False
+        credentials_start = -1
+        credentials_end = -1
+        
+        for i, line in enumerate(lines):
+            # After the title, look for credentials section (typically after a blank line)
+            if line.strip() == '' and i > 0 and credentials_start == -1:
+                if i+1 < len(lines) and 'Dr.' in lines[i+1] or 'Ph.D.' in lines[i+1] or 'Professor' in lines[i+1]:
+                    credentials_start = i + 1
+                    in_credentials = True
+            # End of credentials when we hit another blank line or a divider
+            elif in_credentials and (line.strip() == '' or '─' in line or '---' in line):
+                credentials_end = i
+                break
+        
+        # If we found a credentials section, format it properly
+        if credentials_start != -1 and credentials_end != -1:
+            credentials_lines = lines[credentials_start:credentials_end]
+            credentials_text = '\n'.join(credentials_lines)
+            
+            # Format as LaTeX author section
+            formatted_credentials = f"\\begin{{center}}\n\\large\n{credentials_text}\n\\end{{center}}\n\\vspace{{1em}}\n"
+            
+            # Replace the original credentials section
+            original_section = '\n'.join(lines[credentials_start-1:credentials_end+1])
+            content = content.replace(original_section, formatted_credentials)
+        
+        return content
     
     def _convert_blockquotes(self, content: str) -> str:
         """
@@ -279,8 +369,9 @@ class MarkdownToLatexConverter:
         Returns:
             The processed content with blockquotes converted.
         """
-        # Find all blockquote blocks
-        blockquote_pattern = re.compile(r'^> (.+?)$', re.MULTILINE)
+        # Handle peer review indented quotes using spaces or symbols
+        # First pattern: handle indented blocks with > at the start
+        blockquote_pattern = re.compile(r'^>\s*(.+?)$', re.MULTILINE)
         
         # Find contiguous blockquote lines
         blockquote_blocks = []
@@ -314,6 +405,54 @@ class MarkdownToLatexConverter:
             
             # Replace the original block with the LaTeX version
             original_block = '\n'.join([f"> {line}" for line in block.split('\n')])
+            content = content.replace(original_block, latex_blockquote)
+        
+        # Second pattern: handle common peer review style with indented text
+        peer_quote_pattern = re.compile(r'^(\s{4,})(.+?)$', re.MULTILINE)
+        
+        # Find contiguous indented lines
+        indented_blocks = []
+        current_block = []
+        current_indent = ""
+        in_indented = False
+        
+        for line in content.split('\n'):
+            match = peer_quote_pattern.match(line)
+            if match:
+                indent, text = match.groups()
+                if not in_indented:
+                    in_indented = True
+                    current_indent = indent
+                if indent == current_indent:  # Same indentation level
+                    current_block.append(text)
+            elif in_indented and line.strip() == '':
+                # Empty line in indented block
+                current_block.append('')
+            elif in_indented:
+                # End of indented block
+                in_indented = False
+                indented_blocks.append((current_indent, '\n'.join(current_block)))
+                current_block = []
+                current_indent = ""
+                
+        # Handle case where the last block is indented
+        if current_block:
+            indented_blocks.append((current_indent, '\n'.join(current_block)))
+        
+        # Convert each indented block to LaTeX
+        for indent, block in indented_blocks:
+            latex_blockquote = "\\begin{quote}\n"
+            latex_blockquote += block
+            latex_blockquote += "\n\\end{quote}"
+            
+            # Replace the original block with the LaTeX version
+            original_lines = []
+            for line in block.split('\n'):
+                if line:
+                    original_lines.append(f"{indent}{line}")
+                else:
+                    original_lines.append("")  # Preserve empty lines
+            original_block = '\n'.join(original_lines)
             content = content.replace(original_block, latex_blockquote)
         
         return content
