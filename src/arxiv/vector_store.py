@@ -237,7 +237,21 @@ class ArxivVectorStore:
         paper_id = paper.get('id', '')
         title = paper.get('title', '')
         summary = paper.get('summary', '')
-        authors = ', '.join([author.get('name', '') for author in paper.get('authors', [])])
+        
+        # Handle different author formats
+        authors_list = paper.get('authors', [])
+        author_names = []
+        for author in authors_list:
+            if isinstance(author, dict):
+                # Dictionary format: {"name": "Author Name", ...}
+                author_name = author.get('name', '')
+                if author_name:
+                    author_names.append(author_name)
+            elif isinstance(author, str):
+                # String format: "Author Name"
+                author_names.append(author)
+        authors = ', '.join(author_names)
+        
         published = paper.get('published', '')
         
         # Calculate expiration date
