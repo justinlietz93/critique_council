@@ -140,7 +140,7 @@ Starting with just a simple concept or hypothesis, Cogito meticulously researche
 
 Cogito builds on several pioneering technologies to achieve its transformative capabilities:
 
-- **Large Language Models**: Leverages state-of-the-art LLMs from Anthropic (Claude) and OpenAI (GPT-4) orchestrated in a multi-agent architecture
+- **Large Language Models**: Leverages state-of-the-art LLMs from Anthropic (Claude), Gemini 2.5 Pro, and OpenAI (o3-mini) orchestrated in a multi-agent architecture
 - **ArXiv Integration**: Direct access to over 2 million scholarly articles across scientific disciplines through the ArXiv API
 - **Hierarchical Reasoning Generator**: Revolutionary approach to AI planning and reasoning that transcends traditional flat reasoning patterns by decomposing complex cognitive tasks into a hierarchical Phase → Task → Step structure ([GitHub](https://github.com/justinlietz93/hierarchical_reasoning_generator))
 - **Dynamic Persona Attribution**: Creative and potent strategy for generating domain-specialized AI personas that adapt to complex knowledge domains, integrating philosophical frameworks with scientific expertise ([GitHub](https://github.com/justinlietz93/hierarchical_reasoning_generator/tree/main/hierarchical_planner/persona_builder))
