@@ -1,4 +1,4 @@
-<h1 align="center">Cogito: Revolutionizing Research with AI</h1>
+<h1 align="center">Cogito: It's Time to Revolutionize Research with AI</h1>
 
 <p align="center">
   <img src="src/assets/icon-black.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <em>A significant AI research platform that dramatically accelerates knowledge synthesis, critique, and discovery.</em>
+  <em>A significant AI research platform that dramatically accelerates your pursuit of knowledge synthesis, critique, and discovery.</em>
 </p>
 
 <p align="center">
