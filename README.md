@@ -36,84 +36,55 @@
   <img src="src/assets/image.png" alt="Cogito Research Acceleration Diagram" width="800"/>
 </p>
 
-<h2 align="center">Why Cogito Transforms Research</h2>
+## Why Cogito Transforms Research
 
-<h3 align="center">The Truth-Seeking Engine</h3>
+### The Truth-Seeking Engine
 
-<p align="center">
-  At its core, Cogito is designed to pursue truth with relentless determination:
-</p>
+At its core, Cogito is designed to pursue truth with relentless determination:
 
-<div align="center">
-  <ul style="list-style-position: inside; padding-left: 0;">
-    <li><strong>Real Scientific Research</strong>: Directly accesses and analyzes millions of primary research papers from ArXiv</li>
-    <li><strong>Self-Critiquing Agents</strong>: Each agent continuously evaluates and improves its own outputs</li>
-    <li><strong>Peer Verification</strong>: Multiple specialized agents verify each other's work from different perspectives</li>
-    <li><strong>Evidence-Based Reasoning</strong>: Every claim must be supported by empirical evidence or rigorous logical derivation</li>
-    <li><strong>Meticulous Standard Enforcement</strong>: The system demands academic excellence at every step of the process</li>
-  </ul>
-</div>
+- **Real Scientific Research**: Directly accesses and analyzes millions of primary research papers from ArXiv
+- **Self-Critiquing Agents**: Each agent continuously evaluates and improves its own outputs
+- **Peer Verification**: Multiple specialized agents verify each other's work from different perspectives
+- **Evidence-Based Reasoning**: Every claim must be supported by empirical evidence or rigorous logical derivation
+- **Meticulous Standard Enforcement**: The system demands academic excellence at every step of the process
 
-<h3 align="center">10x Acceleration of Scientific Workflows</h3>
+### 10x Acceleration of Scientific Workflows
 
-<p align="center">
-  Traditional academic research requires months of literature review, critical analysis, and scholarly writing. Cogito compresses this timeline dramatically:
-</p>
+Traditional academic research requires months of literature review, critical analysis, and scholarly writing. Cogito compresses this timeline dramatically:
 
-<div align="center">
-  <ul style="list-style-position: inside; padding-left: 0;">
-    <li><strong>Literature Synthesis</strong>: Analyze hundreds of relevant papers across decades of research in minutes instead of months</li>
-    <li><strong>Critical Evaluation</strong>: Apply rigorous philosophical and scientific frameworks automatically</li>
-    <li><strong>Gap Identification</strong>: Discover overlooked research opportunities across disciplinary boundaries</li>
-    <li><strong>Novel Connection Discovery</strong>: Identify non-obvious links between disparate research domains</li>
-    <li><strong>Complete Publications</strong>: Generate formal academic documents with proper citations, methodologies, and evidence</li>
-  </ul>
-</div>
+- **Literature Synthesis**: Analyze hundreds of relevant papers across decades of research in minutes instead of months
+- **Critical Evaluation**: Apply rigorous philosophical and scientific frameworks automatically
+- **Gap Identification**: Discover overlooked research opportunities across disciplinary boundaries
+- **Novel Connection Discovery**: Identify non-obvious links between disparate research domains
+- **Complete Publications**: Generate formal academic documents with proper citations, methodologies, and evidence
 
-<h3 align="center">Dual System Architecture</h3>
+### Dual System Architecture
 
-<p align="center">
-  Cogito consists of two complementary systems powered by state-of-the-art AI that work together to both critique existing knowledge and synthesize new insights:
-</p>
+Cogito consists of two complementary systems powered by state-of-the-art AI that work together to both critique existing knowledge and synthesize new insights:
 
-<h4 align="center">1. Critique Council</h4>
+#### 1. Critique Council
 
-<p align="center">
-  A multi-agent AI system that subjects concepts to ruthlessly rigorous intellectual evaluation:
-</p>
+A multi-agent AI system that subjects concepts to ruthlessly rigorous intellectual evaluation:
 
-<div align="center">
-  <ul style="list-style-position: inside; padding-left: 0;">
-    <li><strong>Philosophical Analysis</strong>: Applies the analytical frameworks of major philosophical traditions (Aristotle, Descartes, Kant, Leibniz, Popper, Russell)</li>
-    <li><strong>Scientific Peer Review</strong>: Conducts domain-specific scientific evaluation with academic rigor</li>
-    <li><strong>Arbitration Process</strong>: Resolves contradictions and assigns confidence scores to different critiques</li>
-    <li><strong>Publication-Quality Output</strong>: Produces comprehensive critique reports and formal peer reviews</li>
-  </ul>
-</div>
+- **Philosophical Analysis**: Applies the analytical frameworks of major philosophical traditions (Aristotle, Descartes, Kant, Leibniz, Popper, Russell)
+- **Scientific Peer Review**: Conducts domain-specific scientific evaluation with academic rigor
+- **Arbitration Process**: Resolves contradictions and assigns confidence scores to different critiques
+- **Publication-Quality Output**: Produces comprehensive critique reports and formal peer reviews
 
-<h4 align="center">2. Syncretic Catalyst</h4>
+#### 2. Syncretic Catalyst
 
-<p align="center">
-  A research synthesis engine that constructs new academic knowledge:
-</p>
+A research synthesis engine that constructs new academic knowledge:
 
-<div align="center">
-  <ul style="list-style-position: inside; padding-left: 0;">
-    <li><strong>Vector-Powered Literature Discovery</strong>: Finds semantically relevant work across ArXiv's repository using advanced vector embeddings</li>
-    <li><strong>Multi-Agent Research Team</strong>: Specialized research agents explore different dimensions of a concept:
-      <ul style="list-style-position: inside; padding-left: 20px;">
-        <li><strong>Historical Development</strong>: Uncovers foundational and overlooked historical research</li>
-        <li><strong>Modern Research Landscape</strong>: Analyzes cutting-edge developments and current gaps</li>
-        <li><strong>Methodological Approaches</strong>: Develops rigorous validation techniques</li>
-        <li><strong>Mathematical Formalization</strong>: Creates formal representations and models</li>
-        <li><strong>Empirical Evidence</strong>: Gathers and evaluates supporting evidence</li>
-        <li><strong>Interdisciplinary Connections</strong>: Identifies cross-domain applications</li>
-        <li><strong>Implications & Applications</strong>: Explores broader impact and future directions</li>
-      </ul>
-    </li>
-    <li><strong>Comprehensive Thesis Construction</strong>: Synthesizes a cohesive academic thesis with proper citations</li>
-  </ul>
-</div>
+- **Vector-Powered Literature Discovery**: Finds semantically relevant work across ArXiv's repository using advanced vector embeddings
+- **Multi-Agent Research Team**: Specialized research agents explore different dimensions of a concept:
+  - **Historical Development**: Uncovers foundational and overlooked historical research
+  - **Modern Research Landscape**: Analyzes cutting-edge developments and current gaps
+  - **Methodological Approaches**: Develops rigorous validation techniques
+  - **Mathematical Formalization**: Creates formal representations and models
+  - **Empirical Evidence**: Gathers and evaluates supporting evidence
+  - **Interdisciplinary Connections**: Identifies cross-domain applications
+  - **Implications & Applications**: Explores broader impact and future directions
+- **Comprehensive Thesis Construction**: Synthesizes a cohesive academic thesis with proper citations
 
 ## What Makes Cogito Unique
 
