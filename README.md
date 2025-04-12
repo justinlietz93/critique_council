@@ -1,8 +1,8 @@
 # Cogito: Revolutionizing Research with AI
 
 <p align="center">
-  <img src="src/assets/icon-dark.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
-  <img src="src/assets/icon-light.svg#gh-dark-mode-only" alt="Cogito Logo" width="150" />
+  <img src="src/assets/icon-light.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
+  <img src="src/assets/icon-dark.svg#gh-dark-mode-only" alt="Cogito Logo" width="150" />
 </p>
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
