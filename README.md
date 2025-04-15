@@ -1,8 +1,9 @@
+
+
 <h1 align="center">Cogito: It's Time to Revolutionize Research with AI</h1>
 
 <p align="center">
-  <img src="src/assets/icon-black.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
-  <img src="src/assets/icon.png#gh-dark-mode-only" alt="Cogito Logo" width="150" />
+  <img src="src/assets/cogito-icon.png" alt="Cogito Logo" width="250" />
 </p>
 
 <p align="center">
