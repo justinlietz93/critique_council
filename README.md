@@ -1,7 +1,4 @@
 
-
-<h2 align="center">Cogito: AI Augmented Research</h2>
-
 <p align="center">
   <img src="src/assets/cogito-icon.png" alt="Cogito Logo" width="250" />
 </p>
