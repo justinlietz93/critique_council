@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="src/assets/cogito-icon.png" alt="Cogito Logo" width="250" />
+  <img src="src/assets/cogito-icon.png" alt="Cogito Logo" width="350" />
 </p>
 
 <p align="center">
