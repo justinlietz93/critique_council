@@ -66,6 +66,12 @@ def add_latex_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentPar
         help='Level of scientific objectivity (removes philosophical jargon)'
     )
     
+    latex_group.add_argument(
+        '--direct-latex',
+        action='store_true',
+        help='Use direct LaTeX generation for peer reviews (minimal markdown processing)'
+    )
+    
     return parser
 
 
@@ -95,7 +101,10 @@ def handle_latex_output(
         # LaTeX generation not requested
         return False, None, None
     
-    logger.info("Generating LaTeX document from critique report")
+    if peer_review:
+        logger.info("Generating LaTeX document from peer review")
+    else:
+        logger.info("Generating LaTeX document from critique report")
     
     # Get the base configuration from the YAML file
     yaml_config = config_loader.get_latex_config()
@@ -109,10 +118,14 @@ def handle_latex_output(
         'output_dir': args.latex_output_dir,
         'compile_pdf': args.latex_compile,
         'scientific_objectivity_level': args.latex_scientific_level,
-        'scientific_mode': scientific_mode
+        'scientific_mode': scientific_mode,
+        # Add direct_conversion based on CLI arg, default is False from config.py
+        'direct_conversion': args.direct_latex 
     })
     
     logger.info(f"Using LaTeX compile_pdf setting: {config['compile_pdf']}")
+    if config['direct_conversion']:
+        logger.info("Direct LaTeX conversion enabled via CLI.")
     
     try:
         # Make sure the output directory exists

@@ -23,7 +23,7 @@ except ImportError:
     print("Warning: python-dotenv not installed. Trying to use existing environment variables.")
 
 # Import the existing AI clients correctly
-from ai_clients import Claude37SonnetClient, DeepseekR1Client
+from src.syncretic_catalyst.ai_clients import Claude37SonnetClient, DeepseekR1Client
 
 # Define the file order for processing
 FILE_ORDER = [
@@ -247,4 +247,4 @@ if __name__ == "__main__":
                         help='AI model to use (claude or deepseek)')
     args = parser.parse_args()
     
-    generate_ai_proposal(args.model) 
+    generate_ai_proposal(args.model)

@@ -30,8 +30,10 @@ DEFAULT_CONFIG = {
     "scientific_objectivity_level": "high",  # Options: low, medium, high
     "scientific_mode": False,  # Whether to use scientific methodology mode
     "include_bibliography": True,
+ "direct_conversion": False, # Use direct LaTeX generation (minimal markdown) instead of full conversion
+ "custom_preamble": "", # Custom LaTeX preamble to insert before document content
     
-    # Math settings
+ # Math settings
     "detect_math": True,
     "math_environments": ["equation", "align", "gather"],
     "inline_math_delimiters": ["$", "$"],

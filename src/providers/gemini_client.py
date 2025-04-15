@@ -1,12 +1,16 @@
 """
 Client module for interacting with the Google Generative AI (Gemini) API.
-Provides synchronous functions for critique council use.
+Provides functions for the Syncretic Catalyst.
 """
 import google.generativeai as genai
 import json
 import logging
-import time # Import time for synchronous sleep
-from typing import Dict, Any, Tuple, Union
+import os
+import time
+from typing import Dict, Any, Tuple, Union, List, Optional
+
+# Import the model configuration
+from .model_config import get_gemini_config
 
 # Local imports for exceptions
 from .exceptions import ApiKeyError, ApiCallError, ApiResponseError, ApiBlockedError, JsonParsingError, JsonProcessingError
@@ -59,17 +63,24 @@ def configure_deepseek_fallback(config: Dict[str, Any]):
 def get_gemini_model(config: Dict[str, Any]):
     """Initializes and returns the Gemini generative model."""
     global _gemini_model, _gemini_model_name
-    api_config = config.get('api', {}).get('gemini', {})
-    api_key = config.get('api', {}).get('resolved_key')
-    model_name = api_config.get('model_name', 'gemini-2.5-pro-exp-03-25')
+    
+    # Get config from the model_config module or use provided config
+    gemini_config = get_gemini_config()
+    
+    # Override with config if provided
+    if config and 'api' in config and 'gemini' in config['api']:
+        gemini_config.update(config.get('api', {}).get('gemini', {}))
+    
+    api_key = config.get('api', {}).get('resolved_key') or os.environ.get("GEMINI_API_KEY")
+    model_name = gemini_config.get('model_name', 'gemini-2.5-pro-exp-03-25')
     if _gemini_model is not None and _gemini_model_name == model_name:
         return _gemini_model
     configure_client(api_key)
     generation_config = {
-        "temperature": api_config.get('temperature', 0.7),
-        "top_p": api_config.get('top_p', 1.0),
-        "top_k": api_config.get('top_k', 32),
-        "max_output_tokens": api_config.get('max_output_tokens', 8192),
+        "temperature": gemini_config.get('temperature', 0.7),
+        "top_p": gemini_config.get('top_p', 1.0),
+        "top_k": gemini_config.get('top_k', 32),
+        "max_output_tokens": gemini_config.get('max_output_tokens', 8192),
     }
     safety_settings = [
         {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
@@ -229,3 +240,80 @@ def call_gemini_with_retry(prompt_template: str, context: dict, config: Dict[str
                 raise ApiCallError(f"Gemini API call failed after {max_retries} retries and fallback attempt (if applicable).") from last_exception
 
     raise ApiCallError(f"Gemini API call failed unexpectedly after {max_retries} retries.") from last_exception
+
+
+def run_gemini_client(
+    messages: List[Dict[str, str]],
+    model_name: Optional[str] = None,
+    max_tokens: Optional[int] = None,
+    temperature: Optional[float] = None
+) -> str:
+    """
+    High-level function to run the Gemini client.
+    This is the main function to call from the AI client interface.
+    
+    Args:
+        messages: List of message objects
+        model_name: Gemini model name (optional, will use config if not provided)
+        max_tokens: Maximum tokens (optional, will use config if not provided)
+        temperature: Temperature for generation (optional, will use config if not provided)
+        
+    Returns:
+        Generated response
+    """
+    try:
+        # Get config
+        gemini_config = get_gemini_config()
+        
+        # Use provided values or get from config
+        model = model_name or gemini_config.get('model_name', 'gemini-2.5-pro-exp-03-25')
+        max_output_tokens = max_tokens or gemini_config.get('max_output_tokens', 8192)
+        temp = temperature if temperature is not None else gemini_config.get('temperature', 0.6)
+        
+        logger.info(f"Using Gemini model: {model} with temperature: {temp}")
+        
+        # Convert messages format to single prompt
+        system_msg = None
+        user_content = ""
+        
+        for msg in messages:
+            if msg["role"] == "system":
+                system_msg = msg["content"]
+            elif msg["role"] == "user":
+                user_content += msg["content"] + "\n"
+        
+        # Combine system message with user prompt
+        if system_msg:
+            full_prompt = f"System instruction: {system_msg}\n\nUser message: {user_content}"
+        else:
+            full_prompt = user_content
+        
+        # Create config for call_gemini_with_retry
+        config = {
+            'api': {
+                'gemini': {
+                    'model_name': model,
+                    'max_output_tokens': max_output_tokens,
+                    'temperature': temp,
+                    'retries': 3
+                }
+            }
+        }
+        
+        # Call with retry logic
+        response, model_used = call_gemini_with_retry(
+            prompt_template="{content}",
+            context={"content": full_prompt},
+            config=config,
+            is_structured=False
+        )
+        
+        logger.info(f"Gemini response received from {model_used} - length: {len(response) if isinstance(response, str) else 'unknown'} characters")
+        return response
+        
+    except Exception as e:
+        error_msg = f"ERROR from Gemini: {str(e)}"
+        logger.error(error_msg)
+        import traceback
+        traceback.print_exc()
+        return error_msg

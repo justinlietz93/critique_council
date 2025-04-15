@@ -59,6 +59,7 @@ This will:
 | `--PR` | Enable Peer Review mode |
 | `--scientific` | Use scientific methodology |
 | `--latex-output-dir DIR` | Specify output directory |
+| `--direct-latex` | Use simplified direct LaTeX generation for peer reviews (faster, less markdown support) |
 
 ## Complete Example
 

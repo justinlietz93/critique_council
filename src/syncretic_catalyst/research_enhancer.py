@@ -24,12 +24,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.arxiv.arxiv_vector_reference_service import ArxivVectorReferenceService
 from src.arxiv.smart_vector_store import ArxivSmartStore
 
-# Import the existing AI clients and research generator
+# Import the AI clients and research generator
 try:
-    from ai_clients import Claude37SonnetClient, DeepseekR1Client
-    from research_generator import read_file_content, get_project_title, FILE_ORDER
+    # Import AI clients from current directory (relative import)
+    from .ai_clients import Claude37SonnetClient, DeepseekR1Client
+    from .research_generator import read_file_content, get_project_title, FILE_ORDER
 except ImportError:
-    print("Warning: Unable to import from research_generator.py. Make sure it's in the same directory.")
+    print("Warning: Unable to import from this directory. Trying absolute imports...")
+    try:
+        # Try absolute imports
+        from src.syncretic_catalyst.ai_clients import Claude37SonnetClient, DeepseekR1Client
+        from src.syncretic_catalyst.research_generator import read_file_content, get_project_title, FILE_ORDER
+    except ImportError:
+        print("Warning: Unable to import from src.syncretic_catalyst. Falling back to direct import.")
+        try:
+            # Direct import (assuming running from same directory)
+            from ai_clients import Claude37SonnetClient, DeepseekR1Client
+            from research_generator import read_file_content, get_project_title, FILE_ORDER
+        except ImportError:
+            print("Warning: Unable to import from research_generator.py. Make sure it's in the same directory.")
     # Define minimal versions of needed functions
     def read_file_content(file_path: Path) -> str:
         """Read and return the content of a file."""
@@ -360,18 +373,58 @@ def enhance_research(model: str = "claude", force_fallback: bool = False) -> Non
     }
     reference_service = ArxivVectorReferenceService(config=config)
     
-    # 3. Initialize the AI client
+    # 3. Initialize the AI client using the orchestrator
     ai_client = None
     try:
-        if model.lower() == "claude":
-            print("Using Claude 3.7 Sonnet for AI analysis...")
-            ai_client = Claude37SonnetClient()
-        elif model.lower() == "deepseek":
-            print("Using DeepSeek R1 for AI analysis...")
-            ai_client = DeepseekR1Client()
-        else:
-            print(f"Error: Unsupported model '{model}'. Please use 'claude' or 'deepseek'.")
-            return
+        # Try import with different approaches for AIOrchestrator
+        try:
+            # Try relative import first
+            from .ai_clients import AIOrchestrator
+            print("Imported AIOrchestrator (relative import)")
+        except ImportError:
+            # Try absolute import
+            try:
+                from src.syncretic_catalyst.ai_clients import AIOrchestrator
+                print("Imported AIOrchestrator (absolute import)")
+            except ImportError:
+                # Fall back to direct import
+                from ai_clients import AIOrchestrator
+                print("Imported AIOrchestrator (direct import)")
+                
+        # Create the orchestrator with optional model override
+        orchestrator = AIOrchestrator(model_name=model)
+        
+        # Create a simple adapter that mimics the interface expected by our other functions
+        class AIClientAdapter:
+            def __init__(self, orchestrator):
+                self.orchestrator = orchestrator
+                
+            def run(self, messages, max_tokens=4000):
+                # Extract system and user prompts
+                system_prompt = None
+                user_prompt = ""
+                
+                for msg in messages:
+                    if msg["role"] == "system":
+                        system_prompt = msg["content"]
+                    elif msg["role"] == "user":
+                        user_prompt += msg["content"]
+                
+                # Default system prompt if none provided
+                if not system_prompt:
+                    system_prompt = "You are a helpful research assistant."
+                
+                # Call the orchestrator
+                return self.orchestrator.call_llm(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_tokens=max_tokens
+                )
+        
+        # Create the adapter
+        ai_client = AIClientAdapter(orchestrator)
+        print(f"Using AI provider based on configuration or override: {model if model else 'from config'}")
+        
     except Exception as e:
         print(f"Error initializing AI client: {e}")
         return

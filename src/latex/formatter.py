@@ -23,6 +23,8 @@ except ImportError:
 
 from .config import LatexConfig
 from .converters import MarkdownToLatexConverter, MathFormatter
+# Import the new direct generator
+from .converters.direct_latex_generator import DirectLatexGenerator
 from .processors import ContentProcessor, JargonProcessor, CitationProcessor
 from .utils import FileManager, LatexCompiler
 
@@ -124,49 +126,93 @@ class LatexFormatter:
             A tuple of (tex_file_path, pdf_file_path), where pdf_file_path
             is None if compilation is not enabled or fails.
         """
-        logger.info("Formatting critique report into LaTeX document")
+        logger.info("Starting LaTeX document formatting process")
         
-        # Prepare content context
-        context = self._prepare_context(original_content, critique_report, peer_review)
-        
-        # Process each content field through processors
-        if 'analysis_content' in context:
-            context['analysis_content'] = self._process_content(context['analysis_content'])
-        
-        if 'review_content' in context:
-            context['review_content'] = self._process_content(context['review_content'])
-        
-        # Read main template
-        template_content = self.file_manager.read_template(self.config.get('main_template'))
-        
-        # Render template with context
-        rendered_content = self.file_manager.render_template(template_content, context)
-        
-        # Generate timestamp for filename
+        # Generate timestamp for filename early
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename_base = self.config.get('output_filename', 'critique_report')
         
-        # Write the output file
-        output_filename = f"{self.config.get('output_filename')}_{timestamp}.tex"
-        tex_file_path = self.file_manager.write_output_file(output_filename, rendered_content)
-        
-        # Copy required template files to output directory
-        required_templates = ['preamble.tex']
-        if self.config.get('include_bibliography', True):
-            required_templates.append('bibliography.bib')
-        
-        self.file_manager.copy_templates_to_output(required_templates)
-        
-        # Compile to PDF if enabled
+        tex_file_path = None
         pdf_file_path = None
-        if self.latex_compiler is not None and self.config.get('compile_pdf', False):
-            logger.info("Compiling LaTeX document to PDF")
-            success, result = self.latex_compiler.compile_document(tex_file_path)
-            if success:
-                pdf_file_path = result
-                logger.info(f"PDF compilation successful: {pdf_file_path}")
-            else:
-                logger.error(f"PDF compilation failed: {result}")
         
+        # === Conditional Direct LaTeX Generation ===
+        if self.config.get('direct_conversion') and peer_review:
+            logger.info("Using direct LaTeX generation for peer review.")
+            
+            # Extract title from peer review (similar to _prepare_context logic)
+            title_match = re.search(r'#\s+([^\n]+)', peer_review)
+            direct_title = title_match.group(1) if title_match else "Scientific Peer Review"
+            
+            # Instantiate and generate the full document directly
+            direct_generator = DirectLatexGenerator(peer_review, title=direct_title)
+            rendered_content = direct_generator.generate_latex_document()
+            
+            # Write the output file
+            output_filename = f"{output_filename_base}_direct_{timestamp}.tex"
+            tex_file_path = self.file_manager.write_output_file(output_filename, rendered_content)
+            
+            # Compile to PDF if enabled (no extra templates needed for direct)
+            if self.latex_compiler is not None and self.config.get('compile_pdf', False):
+                logger.info("Compiling direct LaTeX document to PDF")
+                success, result = self.latex_compiler.compile_document(tex_file_path)
+                if success:
+                    pdf_file_path = result
+                    logger.info(f"Direct PDF compilation successful: {pdf_file_path}")
+                else:
+                    logger.error(f"Direct PDF compilation failed: {result}. Error details: {result.stderr}")
+            
+        # === Standard Template-Based Generation ===
+        else:
+            if self.config.get('direct_conversion'):
+                 logger.warning("Direct conversion enabled but no peer review provided. Falling back to standard method.")
+            logger.info("Using standard template-based LaTeX generation.")
+            
+            # Prepare content context
+            context = self._prepare_context(original_content, critique_report, peer_review)
+            
+            # Process each content field through processors
+            if 'analysis_content' in context:
+                context['analysis_content'] = self._process_content(context['analysis_content'])
+            
+            if 'review_content' in context:
+                context['review_content'] = self._process_content(context['review_content'])
+            
+            # Read main template
+            template_name = self.config.get('main_template')
+            logger.debug(f"Reading main template: {template_name}")
+            template_content = self.file_manager.read_template(template_name)
+            
+            # Render template with context
+            logger.debug("Rendering template with context.")
+            rendered_content = self.file_manager.render_template(template_content, context)
+            
+            # Write the output file
+            output_filename = f"{output_filename_base}_{timestamp}.tex"
+            tex_file_path = self.file_manager.write_output_file(output_filename, rendered_content)
+            
+            # Copy required template files to output directory
+            required_templates = ['preamble.tex']
+            if self.config.get('include_bibliography', True):
+                required_templates.append('bibliography.bib')
+            
+            logger.debug(f"Copying required templates: {required_templates}")
+            self.file_manager.copy_templates_to_output(required_templates)
+            
+            # Compile to PDF if enabled
+            if self.latex_compiler is not None and self.config.get('compile_pdf', False):
+                logger.info("Compiling standard LaTeX document to PDF")
+                success, result = self.latex_compiler.compile_document(tex_file_path)
+                if success:
+                    pdf_file_path = result
+                    logger.info(f"Standard PDF compilation successful: {pdf_file_path}")
+                else:
+                    logger.error(f"Standard PDF compilation failed: {result}")
+
+        if tex_file_path:
+             logger.info(f"LaTeX generation complete. Output TEX: {tex_file_path}")
+        else:
+             logger.error("LaTeX generation failed: No TEX file path generated.")
+             
         return tex_file_path, pdf_file_path
     
     def _prepare_context(
@@ -189,22 +235,25 @@ class LatexFormatter:
         # Check if we're in scientific mode
         scientific_mode = self.config.get('scientific_mode', False)
         
-        # Extract metadata from critique report
+        # Prioritize peer review for metadata extraction if available
+        source_content = peer_review if peer_review else critique_report
+        
+        # Extract metadata from source content
         title = "Scientific Methodology Analysis" if scientific_mode else "Philosophical Critique"
         author = "Scientific Methodology Council" if scientific_mode else "Critique Council"
         date = datetime.datetime.now().strftime("%B %d, %Y")
         
         # Try to extract a better title and author if available
-        title_match = re.search(r'#\s+([^\n]+)', critique_report)
+        title_match = re.search(r'#\s+([^\n]+)', source_content)
         if title_match:
             title = title_match.group(1)
         
-        author_match = re.search(r'##\s+Author:\s+([^\n]+)', critique_report)
+        author_match = re.search(r'##\s+Author:\s+([^\n]+)', source_content)
         if author_match:
             author = author_match.group(1)
         
-        # Extract possible abstract from critique report
-        abstract = self._extract_abstract(critique_report)
+        # Extract possible abstract from source content
+        abstract = self._extract_abstract(source_content)
         
         # Set keywords based on mode
         if scientific_mode:
@@ -218,17 +267,33 @@ class LatexFormatter:
             processed_original = processed_original[:997] + '...'
         
         # Create context dictionary with template variables
-        context = {
-            'title': title,
-            'author': author,
-            'date': date,
-            'abstract': abstract,
-            'original_content': processed_original,
-            'analysis_content': critique_report,
-            'review_content': peer_review or "No peer review available for this analysis.",
-            'include_bibliography': self.config.get('include_bibliography', True),
-            'keywords': keywords
-        }
+        # If peer review is available, prioritize it as the main content
+        if peer_review:
+            context = {
+                'title': title,
+                'author': author,
+                'date': date,
+                'abstract': abstract,
+                'original_content': processed_original,
+                'analysis_content': peer_review,  # Use peer review as main content
+                'review_content': critique_report,  # Use critique report as review
+                'include_bibliography': self.config.get('include_bibliography', True),
+                'keywords': keywords,
+                'using_peer_review': True  # Flag to indicate we're using peer review
+            }
+        else:
+            context = {
+                'title': title,
+                'author': author,
+                'date': date,
+                'abstract': abstract,
+                'original_content': processed_original,
+                'analysis_content': critique_report,
+                'review_content': "No peer review available for this analysis.",
+                'include_bibliography': self.config.get('include_bibliography', True),
+                'keywords': keywords,
+                'using_peer_review': False  # Flag to indicate we're using critique report
+            }
         
         return context
     

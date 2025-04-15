@@ -1,8 +1,6 @@
-<h1 align="center">Cogito: AI Augmented Research</h1>
 
 <p align="center">
-  <img src="src/assets/icon-black.svg#gh-light-mode-only" alt="Cogito Logo" width="150" />
-  <img src="src/assets/icon.png#gh-dark-mode-only" alt="Cogito Logo" width="150" />
+  <img src="src/assets/cogito-icon.png" alt="Cogito Logo" width="350" />
 </p>
 
 <p align="center">
@@ -11,7 +9,7 @@
 </p>
 
 <p align="center">
-  <em>A significant AI research platform that dramatically accelerates your pursuit of knowledge synthesis, critique, and discovery.</em>
+  <em>A remarkable AI research platform that dramatically accelerates your pursuit of knowledge synthesis, critique, and discovery.</em>
 </p>
 
 <p align="center">
