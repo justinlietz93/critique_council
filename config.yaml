@@ -18,7 +18,7 @@ api:
     model: "o3-mini"
     retries: 3
     temperature: 0.2
-    max_tokens: 8192
+    max_tokens: 4000
 
 # Reasoning tree configuration
 reasoning_tree:
@@ -33,23 +33,23 @@ council_orchestrator:
 arxiv:
   # Whether to enable ArXiv reference lookups during content assessment
   enabled: true
-  
+
   # Maximum number of references to attach per content point
   max_references_per_point: 3
-  
+
   # Cache settings
   cache_dir: "storage/arxiv_cache"
   use_cache: true
-  use_db_cache: true          # Whether to use database (SQLite) cache instead of file-based cache
-  cache_ttl_days: 30          # Number of days before cached entries expire
-  cache_cleanup_interval_hours: 24  # How often to run cleanup jobs (in hours)
-  
+  use_db_cache: true # Whether to use database (SQLite) cache instead of file-based cache
+  cache_ttl_days: 30 # Number of days before cached entries expire
+  cache_cleanup_interval_hours: 24 # How often to run cleanup jobs (in hours)
+
   # Search settings
-  search_sort_by: "relevance"    # Options: relevance, lastUpdatedDate, submittedDate
+  search_sort_by: "relevance" # Options: relevance, lastUpdatedDate, submittedDate
   search_sort_order: "descending" # Options: ascending, descending
-  
+
   # Bibliography settings
-  update_bibliography: true  # Whether to update LaTeX bibliography with ArXiv references
+  update_bibliography: true # Whether to update LaTeX bibliography with ArXiv references
 
 # LaTeX Configuration
 latex:
@@ -58,44 +58,44 @@ latex:
   document_options: ["12pt", "a4paper"]
   title: "Critique Council Report"
   use_hyperref: true
-  
+
   # Template settings
   template_dir: "src/latex/templates"
-  main_template: "academic_paper.tex"  # Default, can be overridden
+  main_template: "academic_paper.tex" # Default, can be overridden
   scientific_template: "scientific_paper.tex"
   philosophical_template: "philosophical_paper.tex"
   preamble_template: "preamble.tex"
   bibliography_template: "bibliography.bib"
-  
+
   # Content processing settings
   replace_philosophical_jargon: true
-  scientific_objectivity_level: "high"  # Options: low, medium, high
-  scientific_mode: false  # Whether to use scientific methodology mode
+  scientific_objectivity_level: "high" # Options: low, medium, high
+  scientific_mode: false # Whether to use scientific methodology mode
   include_bibliography: true
-  
+
   # Math settings
   detect_math: true
   math_environments: ["equation", "align", "gather"]
   inline_math_delimiters: ["$", "$"]
   display_math_delimiters: ["$$", "$$"]
-  
+
   # Output settings
   output_dir: "latex_output"
   output_filename: "critique_report"
-  compile_pdf: true  # Set to true to compile PDF with LaTeX
-  keep_tex: true     # Keep .tex files after PDF compilation
-  
+  compile_pdf: true # Set to true to compile PDF with LaTeX
+  keep_tex: true # Keep .tex files after PDF compilation
+
   # LaTeX compilation settings
   latex_engine: "pdflatex"
   latex_args: ["-interaction=nonstopmode", "-halt-on-error"]
   bibtex_run: true
-  latex_runs: 2  # Number of LaTeX compilation passes
-  
+  latex_runs: 2 # Number of LaTeX compilation passes
+
   # MiKTeX configuration (Windows-specific)
   miktex:
     # Set a custom MiKTeX path if LaTeX isn't found in PATH
     # Leave empty to use automatic detection
     custom_path: ""
-    
+
     # Additional search paths for MiKTeX, beyond the default search locations
     additional_search_paths: []
