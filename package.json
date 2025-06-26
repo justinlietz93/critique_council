@@ -10,6 +10,8 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "aframe": "^1.4.2",
+    "aframe-extras": "^7.0.0",
     "axios": "^1.4.0",
     "chart.js": "^4.3.3",
     "d3": "^7.8.5",
