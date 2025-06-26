@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Paper, 
   InputBase, 
@@ -35,24 +35,41 @@ function UniversalSearch() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [filterType, setFilterType] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   // Reset isSearching state when component mounts or unmounts
   useEffect(() => {
     setIsSearching(false);
-    return () => setIsSearching(false);
+    return () => {
+      setIsSearching(false);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim() && !isSearching) {
       setIsSearching(true);
+      
+      // Clear any existing timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      
       search(query, filters)
         .then(() => {
           navigate('/search', { state: { query, filters } });
-          setIsSearching(false);
+          // Add a small delay before allowing another search
+          searchTimeoutRef.current = setTimeout(() => {
+            setIsSearching(false);
+          }, 1000);
         })
         .catch(() => {
-          setIsSearching(false);
+          searchTimeoutRef.current = setTimeout(() => {
+            setIsSearching(false);
+          }, 1000);
         });
     }
   };
