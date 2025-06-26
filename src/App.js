@@ -31,6 +31,7 @@ function App() {
         <Route path="peer-review" element={<PeerReview />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
+      }
       </Route>
     </Routes>
   );
