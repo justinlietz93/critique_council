@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Box, Paper, Typography, CircularProgress } from '@mui/material';
-import ForceGraph2D from 'react-force-graph';
+import { ForceGraph2D } from 'react-force-graph';
 
 function CitationNetwork({ data, loading, error }) {
   const graphRef = useRef();
