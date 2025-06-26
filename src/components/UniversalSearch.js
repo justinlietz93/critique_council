@@ -36,6 +36,7 @@ function UniversalSearch() {
   const [filterType, setFilterType] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef(null);
+  const lastSearchRef = useRef('');
 
   // Reset isSearching state when component mounts or unmounts
   useEffect(() => {
@@ -50,28 +51,42 @@ function UniversalSearch() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (query.trim() && !isSearching) {
-      setIsSearching(true);
-      
-      // Clear any existing timeout
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-      
-      search(query, filters)
-        .then(() => {
-          navigate('/search', { state: { query, filters } });
-          // Add a small delay before allowing another search
-          searchTimeoutRef.current = setTimeout(() => {
-            setIsSearching(false);
-          }, 1000);
-        })
-        .catch(() => {
-          searchTimeoutRef.current = setTimeout(() => {
-            setIsSearching(false);
-          }, 1000);
-        });
+    
+    // Don't search if query is empty or already searching
+    if (!query.trim() || isSearching) {
+      return;
     }
+    
+    // Don't search if the query is the same as the last search
+    if (query.trim() === lastSearchRef.current) {
+      return;
+    }
+    
+    // Set searching state and save current query
+    setIsSearching(true);
+    lastSearchRef.current = query.trim();
+    
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Perform the search
+    search(query, filters)
+      .then(() => {
+        navigate('/search', { state: { query, filters } });
+        
+        // Add a delay before allowing another search
+        searchTimeoutRef.current = setTimeout(() => {
+          setIsSearching(false);
+        }, 1000);
+      })
+      .catch(() => {
+        // Reset searching state after a delay even if there's an error
+        searchTimeoutRef.current = setTimeout(() => {
+          setIsSearching(false);
+        }, 1000);
+      });
   };
 
   const handleFilterClick = (event, type) => {
