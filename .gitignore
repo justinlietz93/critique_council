@@ -100,3 +100,4 @@ file_stash/*
 # Output files
 storage/
 storage/arxiv_cache/
+.env
