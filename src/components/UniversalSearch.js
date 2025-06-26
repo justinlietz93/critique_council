@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Paper, 
   InputBase, 
@@ -34,12 +34,26 @@ function UniversalSearch() {
   const [activeFilters, setActiveFilters] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [filterType, setFilterType] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Reset isSearching state when component mounts or unmounts
+  useEffect(() => {
+    setIsSearching(false);
+    return () => setIsSearching(false);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (query.trim()) {
-      search(query, filters);
-      navigate('/search', { state: { query, filters } });
+    if (query.trim() && !isSearching) {
+      setIsSearching(true);
+      search(query, filters)
+        .then(() => {
+          navigate('/search', { state: { query, filters } });
+          setIsSearching(false);
+        })
+        .catch(() => {
+          setIsSearching(false);
+        });
     }
   };
 
@@ -155,12 +169,14 @@ function UniversalSearch() {
           placeholder="Search legal cases and scientific papers..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          disabled={isSearching}
         />
         
         <IconButton 
           sx={{ p: '10px' }}
           aria-label="filter by source"
           onClick={(e) => handleFilterClick(e, 'source')}
+          disabled={isSearching}
         >
           <FilterIcon />
         </IconButton>
@@ -172,6 +188,7 @@ function UniversalSearch() {
           sx={{ p: '10px' }} 
           aria-label="search"
           onClick={handleSearch}
+          disabled={isSearching || !query.trim()}
         >
           <SearchIcon />
         </IconButton>

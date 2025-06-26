@@ -68,7 +68,7 @@ function Layout() {
     <div>
       <Toolbar sx={{ justifyContent: 'center' }}>
         <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-          LegalScience
+          Cogito
         </Typography>
       </Toolbar>
       <Divider />
@@ -106,7 +106,7 @@ function Layout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ display: { xs: 'none', sm: 'block' } }}>
-            LegalScience
+            Cogito
           </Typography>
           
           <Box sx={{ flexGrow: 1, mx: 2 }}>
